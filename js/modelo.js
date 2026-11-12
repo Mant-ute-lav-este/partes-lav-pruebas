@@ -1,0 +1,444 @@
+// Datos del parte: listas fijas, partes nuevos de cada apartado y arreglos de los partes
+// guardados por versiones antiguas. Sin pantalla ni estado.
+
+import { uuid, normaliza } from './util.js';
+
+export const FASES = [['antes', 'Antes'], ['durante', 'Durante'], ['despues', 'Después']];
+export const PREFIJO_REF = { INFRA: 'INF', SUPER: 'SUP', MAQUINARIA: 'MAQ', HERBICIDA: 'HER' };
+
+/** Clave del contador del móvil para un prefijo: INF, SUP y MAQ van por tipo (como siempre); LOC y DRE, por prefijo. */
+export function claveContador(prefijo) {
+  const tipo = Object.keys(PREFIJO_REF).find((t) => PREFIJO_REF[t] === prefijo);
+  return `contador-${tipo || prefijo}`;
+}
+
+/** Líneas que se ofrecen en botones, en Infra y en Super (las de la cabecera del PDF no cuentan aquí). */
+export const LINEAS = ['040', '038'];
+
+// Cada máquina abre su parte: «via» (tren de bateo: tajos con nivelado, alineado…),
+// «locomotora» (vagones y balasto) o «dresina» (plataforma y telefonemas).
+// Mientras la oficina no ponga las máquinas en la hoja («MaquinasVia»), se usan estas.
+export const MAQUINAS_VIA_PROVISIONALES = [
+  { descripcion: 'Bateadora 08-475-4S', uic: '99713011401-7', trabajo: 'Bateo', parte: 'via' },
+  { descripcion: 'Perfiladora PDB-110', uic: '99713011302-7', trabajo: 'Perfilado', parte: 'via' },
+  { descripcion: 'Estabilizador DGS-62N', uic: '97180150217-2', trabajo: 'Estabilizado', parte: 'via' },
+  { descripcion: 'Dresina', uic: '99719231001-6', trabajo: '', parte: 'dresina' },
+];
+
+export const nuevaMaquinaVia = () => ({ descripcion: '', uic: '', trabajo: '', horas: '', otro: false });
+
+export function nuevoTajo() {
+  return {
+    id: uuid(), llegada: '', inicio: '', fin: '', salida: '', via: '', pkInicio: '', pkFin: '', desvio: '',
+    nivelado: { si: null, modo: '', max: '', pk: '' },
+    alineado: { si: null, modo: '', max: '', pk: '' },
+    estabilizado: { si: null, programada: null },
+    registro: { si: null, cuando: '', texto: '' },
+    perfilado: { si: null, cepillado: null },
+  };
+}
+
+export const MODOS_NIVELADO = [['calculado', 'Calculado'], ['manual', 'Manual'], ['visor', 'Visor']];
+export const MODOS_ALINEADO = [['calculado', 'Calculado'], ['auto', 'Auto'], ['visor', 'Visor']];
+export const CUANDO_REGISTRO = [['antes', 'Antes'], ['despues', 'Después'], ['ambos', 'Ambos']];
+
+export const nuevoRealizado = () => ({ id: uuid(), via: '', pkInicio: '', pkFin: '', horaInicio: '', horaFin: '', trabajo: '', m3: '' });
+
+export const MAX_TOLVA = 35;   // m³ por tolva (en el papel: «35 / Tolva»)
+
+export function persona(x) {
+  return {
+    nombre: (x.nombre || '').trim(),
+    empresa: (x.empresa || '').trim(),
+    habilitacion: (x.habilitacion || '').trim(),
+    categoria: (x.categoria || '').trim(),
+    otro: Boolean(x.otro),
+  };
+}
+
+// Maquinaria y vehículos: dos secciones con Sí/No obligatorio y desplegables con la lista de la
+// oficina, más la opción «Otra» para escribirla a mano.
+export const EQUIPOS = {
+  maquinas: {
+    titulo: 'Maquinaria', pregunta: '¿Se ha usado maquinaria?', usa: 'usaMaquinaria',
+    elegir: 'Elige la máquina…', otra: 'Otra (escribirla)', anadir: '+ Añadir otra máquina', conMatricula: false,
+  },
+  vehiculos: {
+    titulo: 'Vehículos', pregunta: '¿Se han usado vehículos?', usa: 'usaVehiculos',
+    elegir: 'Elige el vehículo…', otra: 'Otro (escribirlo)', anadir: '+ Añadir otro vehículo', conMatricula: true,
+  },
+};
+
+export const textoEquipo = (x) => [x.descripcion, x.matricula].filter(Boolean).join(' · ');
+
+// Trabajo que no se ha podido hacer, o sin fotos posibles: motivo de una lista fija (más «Otro»).
+// Se guarda el texto del motivo; con «Otro», lo que escriba el capataz.
+export const MOTIVOS_NO_REALIZADO = [
+  'Lluvia / meteorología',
+  'Sin corte de vía / sin autorización',
+  'Falta de material',
+  'Falta de personal o maquinaria',
+];
+// Jornada en la que no se pudo trabajar (INFRA y SUPER): se cierra el parte sin trabajos y con el motivo.
+export const MOTIVOS_SIN_TRABAJOS = [
+  'Lluvia / meteorología',
+  'Avería de maquinaria o vehículos',
+  'Sin corte de vía / sin autorización',
+  'Falta de material',
+  'Falta de personal',
+];
+export const MOTIVOS_SIN_FOTOS = [
+  'Prohibido fotografiar en la zona',
+  'Móvil sin batería / sin cámara',
+  'Sin luz suficiente',
+];
+
+export const TIPOS_EXTRA =[['normales', 'Normales'], ['nocturnas', 'Nocturnas'], ['festivas', 'Festivas']];
+
+// Medidas antiincendios: casillas con la lista de la oficina (varias a la vez) más «Otras».
+// Mientras la oficina no ponga su lista en la hoja, se usa esta.
+export const MEDIDAS_PROVISIONALES = [
+  'Extintor en el vehículo',
+  'Batefuegos',
+  'Mochila extintora de agua',
+  'Cuba o depósito de agua',
+  'Zona de trabajo despejada de vegetación',
+  'Vigilancia tras trabajos con riesgo de chispas',
+  'Revisión de la zona al terminar',
+];
+
+/** Texto de las medidas para el PDF y los datos: «Extintor en el vehículo; Batefuegos; Otras: …». */
+export function textoMedidas(p) {
+  const otras = p.medidasOtrasSi && (p.medidasOtras || '').trim();
+  return [...p.medidas, otras && `Otras: ${otras}`].filter(Boolean).join('; ');
+}
+
+// ---------- Partes guardados por versiones antiguas ----------
+// Los capataces no desinstalan: en el móvil conviven partes de muchas versiones. Todo parte que se
+// lee de la base de datos pasa por migrarParte (db.js), que pone los BORRADORES al día paso a paso.
+// Los cerrados y enviados no se tocan: su PDF y su Datos_ tienen que salir como cuando se cerraron
+// (por ejemplo, un INFRA de la 0.5 sin «maquinas» sale con la tabla única de vehículos de antes).
+// Al corregir uno, la revisión nueva es un borrador y se migra entonces.
+//
+// REGLA: quien añada o cambie un campo del parte (o de un trabajo) sube ESQUEMA y añade su paso
+// abajo. Los pasos no borran nada y se pueden repetir sin cambiar el resultado.
+// `esquema` es solo del móvil: no va en el Datos_ (envio.js lo quita). No confundir con `version`,
+// que es la versión del formato del Datos_ (docs/DATOS-PARTE.md).
+
+/** Esquema de los partes de esta versión de la app. 1 = cualquier parte de antes de la 0.27.0. */
+export const ESQUEMA = 3;
+
+/** Pone al día un borrador guardado por una versión anterior (lo cambia y lo devuelve). */
+export function migrarParte(p) {
+  if (!p || typeof p !== 'object' || p.estado !== 'borrador') return p;
+  if ((p.esquema || 1) >= ESQUEMA) return p;
+  if ((p.esquema || 1) < 2) migrar1a2(p);
+  // 2 → 3 (0.30.0): llega el parte HERBICIDA. Los demás tipos no cambian; a un HERBICIDA se le
+  // completa lo que falte (hoy no hay ninguno anterior: queda para los que lleguen después).
+  if (p.tipo === 'HERBICIDA') completarHerbicida(p);
+  p.esquema = ESQUEMA;
+  return p;
+}
+
+function migrar1a2(p) {
+  // 1 → 2: todo lo que fue llegando de la 0.6 a la 0.26.
+  // 0.6.0: maquinaria y vehículos por separado; lo apuntado antes queda como vehículos y se
+  // vuelve a preguntar por la maquinaria.
+  if (!p.maquinas) {
+    p.maquinas = [];
+    p.usaVehiculos = p.usaMaquinaria;
+    p.usaMaquinaria = null;
+  }
+  if (!p.vehiculos) p.vehiculos = [];
+  // 0.7.0: las medidas antiincendios eran texto libre: pasa a «Otras».
+  if (!p.medidas) {
+    p.medidas = [];
+    p.medidasOtras = p.antiincendios || '';
+    p.medidasOtrasSi = Boolean(p.medidasOtras.trim());
+  }
+  // 0.8.0: horas extra. 0.9.8: formato 1.
+  if (!p.extras) {
+    p.extras = [];
+    p.usaExtras = null;
+  }
+  if (!p.formato1) p.formato1 = [];
+  if (!p.trabajos) p.trabajos = [];
+  for (const t of p.trabajos) {
+    const faltan = {
+      aparato: '',                 // 0.6.0
+      horaInicio: '', horaFin: '', // 0.8.3
+      tipoCoste: '',               // 0.9.4
+      noRealizado: false, motivoNoRealizado: '', sinFotos: false, motivoSinFotos: '',   // 0.13.0
+      fotos: [],
+    };
+    for (const [k, v] of Object.entries(faltan)) if (!(k in t)) t[k] = v;
+    // 0.9.1: el telefonema pasa de { numero, hora } a { numero, salida } (nº de entrada y de salida).
+    // La hora antigua se conserva: el PDF la sigue enseñando.
+    if (!t.telefonema) t.telefonema = { numero: '', salida: '' };
+    else if (!('salida' in t.telefonema)) t.telefonema.salida = '';
+  }
+}
+
+// ---------- Parte HERBICIDA (campaña de herbicida, 0.30.0) ----------
+// Como el papel: ocupaciones de vía en el parte y una lista de casos SIOS regados. Cada caso se guarda
+// en p.trabajos (así las fotos, la cola, «Corregir» y el aviso de peso funcionan igual que en INFRA),
+// con referencia SIOS, su ubicación y m² (de la lista de la campaña), el medio y sus fotos.
+
+export const MAX_PRODUCTOS = 3;
+export const MEDIOS_HER = [['mochila', 'Mochila'], ['maquina', 'Máquina'], ['ambas', 'Ambas']];
+export const NOMBRE_MEDIO = Object.fromEntries(MEDIOS_HER);
+export const FASES_HER = [['antes', 'Antes'], ['despues', 'Después']];
+
+export const nuevaOcupacion = (previa = null) => ({
+  id: uuid(), acta: '', telefonema: '', entrada: '', salida: '',
+  linea: previa ? previa.linea : '', via: previa ? previa.via : '', pkInicio: previa ? previa.pkFin : '', pkFin: '', terminada: null,
+});
+
+export const nuevoProducto = () => ({ nombre: '', dosis: '', otro: false });
+
+export function nuevoCaso() {
+  return {
+    id: uuid(),
+    referencia: { tipo: 'SIOS', codigo: '', motivo: '' },
+    linea: '', via: '', pkInicio: '', pkFin: '', superficie: '', ubicacion: '', desbroce: '',
+    deLista: false,       // los datos vienen de la lista de la campaña (se pueden cambiar)
+    medio: '',            // solo si se marcan mochila y máquina: 'mochila', 'maquina' o 'ambas'
+    parcial: false,       // «¿Solo una parte?»: se apuntan los m² hechos
+    m2Hechos: '',
+    sinFotos: false, motivoSinFotos: '',
+    fotos: [],
+  };
+}
+
+/** Campos propios del parte HERBICIDA (los que no tienen los demás tipos). */
+export function camposHerbicida() {
+  return {
+    ocupaciones: [],
+    sinOcupacion: false, horaInicio: '', horaFin: '',   // «Hoy no se ha ocupado la vía»
+    usaMochila: false, usaMaquina: false, maquinaHer: { descripcion: '', otro: false },
+    productos: [nuevoProducto()],
+    caldo: '',            // litros de caldo gastados en todo el parte
+    confirmaCantidades: false,
+  };
+}
+
+/** Completa un borrador HERBICIDA con lo que le falte (repetible, sin borrar nada). */
+export function completarHerbicida(p) {
+  for (const [k, v] of Object.entries(camposHerbicida())) if (!(k in p)) p[k] = v;
+  for (const t of p.trabajos || []) {
+    for (const [k, v] of Object.entries(nuevoCaso())) if (k !== 'id' && !(k in t)) t[k] = v;
+  }
+  return p;
+}
+
+const num = (s) => {
+  const n = Number(String(s == null ? '' : s).replace(',', '.'));
+  return Number.isFinite(n) ? n : 0;
+};
+
+/**
+ * ¿El PDF lleva anexo con las fotos? Sí, salvo HERBICIDA (35 casos no caben en un correo con anexo:
+ * sus fotos van sueltas). Lo usan el PDF y el aviso de peso (factorCorreo), para que no se desacompasen.
+ */
+export const llevaAnexoFotos = (p) => Boolean(p) && p.tipo !== 'HERBICIDA';
+
+/** Nº SIOS de un caso, solo las cifras («S-385.952» → «385952»): para ver repetidos y nombrar las fotos. */
+export const codigoSios = (t) => String((t && t.referencia && t.referencia.codigo) || '').replace(/\D/g, '');
+
+/** Medio de un caso: con un solo medio marcado en el parte, ese; con los dos, el del caso. */
+export function medioCaso(p, t) {
+  if (p.usaMochila && p.usaMaquina) return t.medio || '';
+  return p.usaMochila ? 'mochila' : p.usaMaquina ? 'maquina' : '';
+}
+
+/** m² regados de un caso: los hechos si es «solo una parte»; si no, la superficie del caso. */
+export const m2Caso = (t) => (t.parcial ? num(t.m2Hechos) : num(t.superficie));
+
+/**
+ * Cálculos del parte: m² y hectáreas regadas, m² por medio, caldo por hectárea y, por producto, el
+ * total (caldo × dosis) y por hectárea. Sin hectáreas, «por hectárea» queda en 0.
+ */
+export function calculosHerbicida(p) {
+  const m2 = (p.trabajos || []).reduce((a, t) => a + m2Caso(t), 0);
+  const ha = m2 / 10000;
+  const porMedio = { mochila: 0, maquina: 0, ambas: 0 };
+  for (const t of p.trabajos || []) {
+    const m = medioCaso(p, t);
+    if (porMedio[m] != null) porMedio[m] += m2Caso(t);
+  }
+  const caldo = num(p.caldo);
+  const productos = (p.productos || []).filter((x) => String(x.nombre || '').trim()).map((x) => {
+    const total = caldo * num(x.dosis) / 1000;   // L de caldo × ml/L → litros de producto
+    return { nombre: x.nombre.trim(), dosis: num(x.dosis), total, porHa: ha ? total / ha : 0 };
+  });
+  return { m2, ha, porMedio, caldo, caldoHa: ha ? caldo / ha : 0, productos };
+}
+
+/** Casos de la lista de la campaña cuyo nº contiene lo escrito (desde 3 cifras), los que empiezan por ello primero. */
+export function buscarCasos(lista, texto, max = 8) {
+  const q = String(texto || '').replace(/\D/g, '');
+  if (q.length < 3) return [];
+  return (lista || [])
+    .filter((c) => String(c.caso).includes(q))
+    .sort((a, b) => Number(!String(a.caso).startsWith(q)) - Number(!String(b.caso).startsWith(q)) || String(a.caso).localeCompare(String(b.caso)))
+    .slice(0, max);
+}
+
+/** Copia en el caso los datos de la lista de la campaña (línea, vía, PK, m², ubicación y desbroce). */
+export function aplicarCasoLista(t, c) {
+  Object.assign(t, {
+    linea: String(c.linea || ''), via: String(c.via || ''), pkInicio: String(c.pkInicio || ''), pkFin: String(c.pkFin || ''),
+    superficie: String(c.superficie || ''), ubicacion: String(c.ubicacion || ''), desbroce: String(c.desbroce || ''), deLista: true,
+  });
+  t.referencia = { ...(t.referencia || {}), tipo: 'SIOS', codigo: String(c.caso) };
+  return t;
+}
+
+/** Vacía los datos que vinieron de la lista (al cambiar a mano el nº de un caso elegido de la lista). */
+export function quitarDatosLista(t) {
+  Object.assign(t, { linea: '', via: '', pkInicio: '', pkFin: '', superficie: '', ubicacion: '', desbroce: '', deLista: false });
+  return t;
+}
+
+/** Nombre antiguo de migrarParte (lo usan las pantallas del parte). */
+export const normalizarParte = migrarParte;
+
+// ---------- Repetir el parte anterior ----------
+// Al crear un INFRA o un SUPER se ofrece empezar igual que el último del mismo tipo: personal,
+// maquinaria, vehículos y medidas antiincendios. Trabajos, horas extra, fotos, formato 1 y
+// observaciones no se copian; la fecha y la jornada nocturna salen como en un parte nuevo.
+
+/** Último parte del tipo dado: el de fecha más reciente y, a igual fecha, el último tocado. */
+export function ultimoParteDe(partes, tipo) {
+  return partes
+    .filter((x) => x.tipo === tipo)
+    .sort((a, b) => `${b.fecha}${b.modificado}`.localeCompare(`${a.fecha}${a.modificado}`))[0] || null;
+}
+
+const nombres = (ps) => {
+  const n = ps.map((x) => x.nombre);
+  return n.length > 3 ? `${n.slice(0, 3).join(', ')} y ${n.length - 3} más` : n.join(', ');
+};
+const textoUsa = (usa, xs) => (usa ? `Sí · ${xs.map(textoEquipo).filter(Boolean).join(', ') || 'sin elegir'}` : 'No');
+
+/**
+ * Apartados del parte anterior que se pueden copiar, para la hoja «¿Empezar igual…?».
+ * Solo salen los que tienen algo: sin ninguno, no hace falta preguntar.
+ * @param {object} previo parte anterior
+ * @param {string} capataz el capataz no cuenta: ya va en el parte nuevo
+ * @param {string[]} medidasLista medidas de la lista de la oficina (las que ya no estén no se copian)
+ * @returns {{clave: string, titulo: string, detalle: string}[]}
+ */
+export function apartadosCopiables(previo, capataz, medidasLista) {
+  const r = [];
+  const ya = normaliza(capataz);
+  const gente = (previo.personal || []).filter((x) => x.nombre && normaliza(x.nombre) !== ya);
+  if (gente.length) r.push({ clave: 'personal', titulo: 'Personal', detalle: `${gente.length} persona(s): ${nombres(gente)}` });
+  // Los partes de antes de v0.6.0 no separaban maquinaria y vehículos: no se copian.
+  if (Array.isArray(previo.maquinas)) {
+    if (previo.usaMaquinaria != null) r.push({ clave: 'maquinas', titulo: 'Maquinaria', detalle: textoUsa(previo.usaMaquinaria, previo.maquinas) });
+    if (previo.usaVehiculos != null) r.push({ clave: 'vehiculos', titulo: 'Vehículos', detalle: textoUsa(previo.usaVehiculos, previo.vehiculos || []) });
+  }
+  const medidas = (previo.medidas || []).filter((m) => medidasLista.includes(m));
+  const otras = previo.medidasOtrasSi && (previo.medidasOtras || '').trim();
+  if (medidas.length || otras) {
+    r.push({ clave: 'medidas', titulo: 'Medidas antiincendios', detalle: [medidas.length && `${medidas.length} medida(s)`, otras && `Otras: ${otras}`].filter(Boolean).join(' · ') });
+  }
+  // HERBICIDA: los productos con su dosis (el caldo no, es de cada día).
+  const productos = (previo.productos || []).filter((x) => String(x.nombre || '').trim());
+  if (previo.tipo === 'HERBICIDA' && productos.length) {
+    r.push({ clave: 'productos', titulo: 'Productos y dosis', detalle: productos.map((x) => `${x.nombre}${x.dosis ? ` (${x.dosis} ml/L)` : ''}`).join(', ') });
+  }
+  return r;
+}
+
+/**
+ * Parte nuevo con los apartados elegidos copiados del anterior. No cambia ni el nuevo ni el
+ * anterior: devuelve uno nuevo.
+ * @param {object} nuevo parte recién creado (con el capataz en el personal)
+ * @param {object} previo parte anterior
+ * @param {string[]} claves apartados que copiar: personal, maquinas, vehiculos, medidas
+ * @param {string[]} medidasLista medidas de la lista de la oficina
+ */
+export function repetirParte(nuevo, previo, claves, medidasLista) {
+  const p = structuredClone(nuevo);
+  const copia = (xs) => (xs || []).map((x) => ({ ...x }));
+  if (claves.includes('personal')) {
+    const ya = new Set(p.personal.map((x) => normaliza(x.nombre)));
+    for (const x of previo.personal || []) {
+      if (x.nombre && !ya.has(normaliza(x.nombre))) { p.personal.push(persona(x)); ya.add(normaliza(x.nombre)); }
+    }
+  }
+  if (Array.isArray(previo.maquinas)) {
+    if (claves.includes('maquinas') && previo.usaMaquinaria != null) {
+      p.usaMaquinaria = previo.usaMaquinaria;
+      p.maquinas = previo.usaMaquinaria ? copia(previo.maquinas) : [];
+    }
+    if (claves.includes('vehiculos') && previo.usaVehiculos != null) {
+      p.usaVehiculos = previo.usaVehiculos;
+      p.vehiculos = previo.usaVehiculos ? copia(previo.vehiculos) : [];
+    }
+  }
+  if (claves.includes('medidas')) {
+    p.medidas = (previo.medidas || []).filter((m) => medidasLista.includes(m));
+    p.medidasOtrasSi = Boolean(previo.medidasOtrasSi && (previo.medidasOtras || '').trim());
+    p.medidasOtras = p.medidasOtrasSi ? previo.medidasOtras : '';
+    p.antiincendios = textoMedidas(p);
+  }
+  if (claves.includes('productos') && p.tipo === 'HERBICIDA') {
+    const ps = (previo.productos || []).filter((x) => String(x.nombre || '').trim()).slice(0, MAX_PRODUCTOS);
+    if (ps.length) p.productos = ps.map((x) => ({ nombre: x.nombre, dosis: x.dosis || '', otro: Boolean(x.otro) }));
+  }
+  return p;
+}
+
+// ---------- Fotos de partes ya enviados ----------
+// Las fotos ocupan casi todo el espacio del móvil. Cuando un parte lleva tiempo en la oficina, se
+// borran del móvil (allí están las originales) y se quedan los datos, para repetir o rectificar.
+
+export const DIAS_FOTOS = 30;
+
+/** Fecha (ISO, la del móvil) del último envío del parte; '' si no tiene. */
+export function fechaEnvio(p) {
+  const x = (p.envios || [])[(p.envios || []).length - 1];
+  return typeof x === 'string' ? x : (x && x.fecha) || '';
+}
+
+/**
+ * ¿Hay que borrar ya las fotos de este parte? Solo de partes enviados hace más de «dias» días.
+ * Borradores, cerrados y en cola nunca; tampoco si la fecha del envío no se entiende.
+ */
+export function fotosCaducadas(p, ahora = new Date(), dias = DIAS_FOTOS) {
+  if (!p || p.estado !== 'enviado' || p.fotosBorradas) return false;
+  const t = Date.parse(fechaEnvio(p));
+  return Number.isFinite(t) && ahora.getTime() - t > dias * 86400000;
+}
+
+/** Horas en la cola sin llegar a la oficina antes de ofrecer «Enviar por Gmail (emergencia)». */
+export const HORAS_EMERGENCIA = 12;
+
+/** ¿El parte lleva más de HORAS_EMERGENCIA en la cola? `p.enCola` es la fecha (ISO) en que entró. */
+export function colaAtascada(p, ahora = new Date(), horas = HORAS_EMERGENCIA) {
+  if (!p || p.estado !== 'en-cola') return false;
+  const t = Date.parse(p.enCola || '');
+  return Number.isFinite(t) && ahora.getTime() - t > horas * 3600000;
+}
+
+/** Al rectificar: quita las fotos que ya no están en el móvil, para que la app pida fotos nuevas. */
+export function quitarFotosQueFaltan(p, existe) {
+  let quitadas = 0;
+  for (const t of p.trabajos || []) {
+    const antes = (t.fotos || []).length;
+    t.fotos = (t.fotos || []).filter((f) => existe.has(f.id));
+    quitadas += antes - t.fotos.length;
+  }
+  const antes = (p.formato1 || []).length;
+  p.formato1 = (p.formato1 || []).filter((f) => existe.has(f.id));
+  quitadas += antes - p.formato1.length;
+  if (p.drp) {   // solo si lo tiene: un parte sin DRP no gana el campo al rectificarlo
+    const antesDrp = p.drp.length;
+    p.drp = p.drp.filter((f) => existe.has(f.id));
+    quitadas += antesDrp - p.drp.length;
+  }
+  return quitadas;
+}

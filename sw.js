@@ -6,7 +6,7 @@
 // actualizan como script clásico, y un módulo no se podría cargar así. Por eso el envío
 // en segundo plano repite aquí la lógica de js/salida.js.
 
-const VERSION = 'v0.11.3';
+const VERSION = 'v0.29.1';
 const CACHE = `plpruebas-${VERSION}`;
 const JSPDF = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/4.2.1/jspdf.umd.min.js';
 const ARCHIVOS = [
@@ -14,14 +14,35 @@ const ARCHIVOS = [
   './index.html',
   './css/app.css',
   './js/app.js',
+  './js/aspecto.js',
+  './js/aspecto-inicio.js',
+  './js/campos.js',
+  './js/compartidas.js',
   './js/db.js',
+  './js/drp.js',
   './js/envio.js',
+  './js/espacio.js',
+  './js/estado.js',
+  './js/eventos.js',
   './js/fallos.js',
   './js/fotos.js',
+  './js/modelo.js',
   './js/pdf.js',
   './js/salida.js',
   './js/servidor.js',
   './js/util.js',
+  './js/validaciones.js',
+  './js/vista-acceso.js',
+  './js/vista-compartidas.js',
+  './js/vista-drp.js',
+  './js/vista-envio.js',
+  './js/vista-extras.js',
+  './js/vista-herbicida.js',
+  './js/vista-inicio.js',
+  './js/vista-maquinaria.js',
+  './js/vista-origen-foto.js',
+  './js/vista-parte.js',
+  './js/vista-trabajo.js',
   './guia/guia-capataces.pdf',
   './manifest.webmanifest',
   './icons/icon-192.png',
@@ -40,7 +61,7 @@ const HEIC2ANY = 'https://cdnjs.cloudflare.com/ajax/libs/heic2any/0.0.4/heic2any
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE)
     .then((c) => c.addAll(ARCHIVOS.map((u) => new Request(u, { cache: 'reload' })))
-      .then(() => c.add(new Request(HEIC2ANY, { cache: 'reload' })).catch(() => {})))
+      .then(() => c.add(new Request(HEIC2ANY, { cache: 'reload', mode: 'cors' })).catch(() => {})))
     .then(() => self.skipWaiting()));
 });
 
@@ -54,6 +75,11 @@ self.addEventListener('activate', (e) => {
 
 self.addEventListener('fetch', (e) => {
   const req = e.request;
+  const destino = new URL(req.url);
+  if (req.method === 'POST' && destino.origin === self.location.origin && destino.pathname.endsWith('/compartir')) {
+    e.respondWith(recibirCompartidas(req));
+    return;
+  }
   if (req.method !== 'GET') return;
   const host = new URL(req.url).hostname;
   if (host.endsWith('google.com') || host.endsWith('googleusercontent.com')) return;   // servidor: siempre a la red
@@ -82,6 +108,55 @@ self.addEventListener('sync', (e) => {
     if (r.pendientes) throw new Error('Quedan partes pendientes de enviar');
   }));
 });
+
+// ---------- Fotos compartidas desde otra app ----------
+// WhatsApp → Compartir → Partes LAV («share_target» en manifest.webmanifest) llega aquí como un
+// formulario. Las fotos se guardan en el móvil (clave «compartidas») y se abre la app, que pregunta
+// a qué trabajo y fase van (js/compartidas.js). No toca la cola ni los partes.
+// Mismos límites que MAX_COMPARTIDAS y MAX_MB_COMPARTIDA de js/compartidas.js (una prueba lo vigila).
+const MAX_COMPARTIDAS = 30;
+const MAX_MB_COMPARTIDA = 25;
+
+async function recibirCompartidas(req) {
+  let recibidas = 1;   // si ni se puede leer el formulario, al menos una se ha perdido
+  let guardadas = 0;
+  // Ha llegado algo compartido: este móvil ya tiene «Compartir → Partes LAV». Se apunta la primera vez
+  // (misma clave y forma que CLAVE_ACTIVO de js/compartidas.js).
+  try {
+    const activo = await op('kv', 'readonly', (s) => s.get('compartirActivo'));
+    if (!(activo && typeof activo === 'object' && activo.fecha)) {
+      await op('kv', 'readwrite', (s) => s.put({ fecha: isoLocal(), via: 'compartir' }, 'compartirActivo'));
+    }
+  } catch (err) {
+    await registrarFallo('compartir', err && err.message);
+  }
+  try {
+    const todas = (await req.formData()).getAll('fotos');
+    recibidas = todas.length;
+    const nuevas = todas.filter((f) => f instanceof File && f.size > 0 &&
+      f.size <= MAX_MB_COMPARTIDA * 1024 * 1024 &&
+      (/^image\//.test(f.type) || /\.(jpe?g|png|webp|heic|heif)$/i.test(f.name)));
+    if (nuevas.length) {
+      const previas = await op('kv', 'readonly', (s) => s.get('compartidas'));
+      const antes = Array.isArray(previas) ? previas : [];
+      const lista = antes.concat(nuevas.map((archivo) => ({ id: crypto.randomUUID(), archivo, llegada: isoLocal() })))
+        .slice(0, MAX_COMPARTIDAS);
+      await op('kv', 'readwrite', (s) => s.put(lista, 'compartidas'));
+      guardadas = lista.length - antes.length;
+    }
+  } catch (err) {
+    await registrarFallo('compartir', err && err.message);
+  }
+  // Las que no se han guardado se cuentan para que la app lo diga (js/compartidas.js, tomarDescartadas).
+  if (recibidas > guardadas) {
+    try {
+      const n = Number(await op('kv', 'readonly', (s) => s.get('compartidasDescartadas'))) || 0;
+      await op('kv', 'readwrite', (s) => s.put(n + recibidas - guardadas, 'compartidasDescartadas'));
+    } catch { /* sin almacenamiento: nada que hacer */ }
+  }
+  // 303: el navegador abre la app con un GET normal (la portada sale de la caché, también sin cobertura).
+  return Response.redirect(new URL('./', req.url).href, 303);
+}
 
 // ---------- Cola de salida (misma lógica que js/salida.js) ----------
 
@@ -148,6 +223,7 @@ async function procesarSalida() {
       await op('salida', 'readwrite', (s) => s.delete(it.id));
       enviados++;
     } else {
+      await registrarFallo('envio', j.error);
       it.error = j.error;
       it.intentos = (it.intentos || 0) + 1;
       await op('salida', 'readwrite', (s) => s.put(it));
@@ -163,14 +239,41 @@ async function procesarSalida() {
 
 // Google a veces pierde la respuesta aunque el parte haya llegado: se repite con el mismo
 // identificador de petición y el servidor contesta lo mismo sin mandarlo otra vez.
+// Mismos 5 intentos, esperas y tiempo máximo que `api` en js/servidor.js (la prueba «cola: el
+// service worker…» avisa si se separan).
 async function llamar(url, cuerpo) {
-  for (let i = 0; i < 3; i++) {
-    if (i) await new Promise((r) => setTimeout(r, 2000 * i));
+  for (let i = 0; i < 5; i++) {
+    if (i) await new Promise((r) => setTimeout(r, Math.min(2000 * i, 5000)));
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 240000);
     try {
-      const r = await fetch(url, { method: 'POST', redirect: 'follow', body: cuerpo });
+      const r = await fetch(url, { method: 'POST', redirect: 'follow', body: cuerpo, signal: ctrl.signal });
       const j = await r.json();
       if (!j.reintentar) return j;
-    } catch { /* sin cobertura o respuesta perdida */ }
+    } catch {
+      if (!navigator.onLine) break;   // sin cobertura: se reintenta más tarde
+    } finally {
+      clearTimeout(t);
+    }
   }
   throw new Error('Sin respuesta del servidor');
+}
+
+// Apunta el fallo en el móvil como js/fallos.js (mismo texto limpio, sin repetidos, máximo 20);
+// la app lo manda a la hoja «Errores» la próxima vez que se abra.
+async function registrarFallo(tipo, mensaje) {
+  try {
+    const m = String(mensaje == null ? '' : mensaje)
+      .replace(/[^\s@]+@[^\s@]+\.[^\s@]+/g, '[correo]')
+      .replace(/\d{6,}/g, '[nº]')
+      .replace(/https?:\/\/\S+/g, '[url]')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 200);
+    const guardados = await op('kv', 'readonly', (s) => s.get('fallos'));
+    const pendientes = Array.isArray(guardados) ? guardados : [];   // hasta la 0.20.2 podía tener los intentos de PIN
+    if (!m || pendientes.some((f) => f.tipo === tipo && f.mensaje === m)) return;
+    pendientes.push({ tipo: String(tipo).slice(0, 20), mensaje: m, fecha: new Date().toISOString(), version: VERSION.slice(1) });
+    await op('kv', 'readwrite', (s) => s.put(pendientes.slice(-20), 'fallos'));
+  } catch { /* sin almacenamiento: nada que hacer */ }
 }

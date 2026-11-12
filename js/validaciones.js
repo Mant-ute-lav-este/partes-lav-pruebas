@@ -1,0 +1,493 @@
+// Validaciones de los partes y comprobaciones de los campos. Son funciones puras, sin pantalla
+// ni estado, para poder probarlas solas (pruebas/pruebas.js).
+
+import { codigoSios, llevaAnexoFotos } from './modelo.js';
+
+// PIN nuevo: la misma regla que pinFacil_ del servidor (v23; hay una prueba que compara los dos).
+// Solo al crear o cambiar el PIN: los que ya existen siguen valiendo.
+const PIN_TIPICOS = ['2580', '0852', '1004', '6969', '147258', '159753', '258036', '696969'];
+
+export function pinFacil(pin) {
+  if (/^(\d)\1+$/.test(pin)) return true;                                 // 0000, 111111
+  if (/^(\d\d)\1+$/.test(pin) || /^(\d{3})\1$/.test(pin)) return true;    // 1212, 121212, 123123
+  if (/^(\d)\1(\d)\2(\d)\3$/.test(pin) || /^(\d)\1(\d)\2$/.test(pin)) return true;   // 1122, 112233
+  const pasos = [];
+  for (let i = 1; i < pin.length; i++) pasos.push((Number(pin[i]) - Number(pin[i - 1]) + 10) % 10);
+  if (pasos.every((p) => p === 1) || pasos.every((p) => p === 9)) return true;   // 1234, 7890, 4321
+  if (pin.length === 4 && /^(19[4-9]\d|20[0-3]\d)$/.test(pin)) return true;      // años: 1940-2039
+  return PIN_TIPICOS.includes(pin);
+}
+
+/** Qué le pasa a un PIN nuevo ('' si vale). Los textos son los mismos que da el servidor. */
+export function errorPinNuevo(pin) {
+  if (!/^\d{4,6}$/.test(pin)) return 'El PIN tiene que tener de 4 a 6 cifras.';
+  if (pinFacil(pin)) return 'Ese PIN es muy fácil de adivinar (cifras repetidas, seguidas o muy usadas). Elige otro.';
+  return '';
+}
+
+export const horaValida =(s) => /^([01]\d|2[0-3]):[0-5]\d$/.test(String(s || ''));
+
+export const pkValido = (s) => /^\s*\d+\s*[+.,/]\s*\d+\s*$/.test(String(s || ''));
+
+export const numeroValido = (s) => /^\s*\d+([.,]\d+)?\s*$/.test(String(s == null ? '' : s));
+export const aNumero = (s) => Number(String(s == null ? '' : s).replace(',', '.'));
+
+/**
+ * Vías de un trabajo, tajo o trabajo realizado: texto con los números separados por comas
+ * («1», «1, 2»). Los partes antiguos, con una sola vía, ya lo cumplen.
+ */
+export const listaVias = (s) => String(s == null ? '' : s).split(/\D+/).filter(Boolean);
+export const unirVias = (lista) => [...new Set(lista.map(String))].sort((a, b) => Number(a) - Number(b)).join(', ');
+
+/**
+ * Aparatos de un trabajo: texto con los nombres separados por comas («S2 MIN 2, S1 MIN 2»).
+ * Los partes antiguos, con un solo aparato, ya lo cumplen.
+ */
+export const listaAparatos = (s) => String(s == null ? '' : s).split(',').map((x) => x.trim()).filter(Boolean);
+export const unirAparatos = (lista) => lista.map((x) => String(x == null ? '' : x).trim()).filter(Boolean).join(', ');
+
+const pkAMetros = (s) => { const [km, m] = String(s).split(/\s*[+.,/]\s*/); return Number(km) * 1000 + Number(m); };
+const metrosAPk = (n) => `${Math.floor(n / 1000)}+${String(n % 1000).padStart(3, '0')}`;
+
+/**
+ * PK de los aparatos elegidos de la lista de la oficina: con uno, sus PK tal cual; con varios, del
+ * más bajo al más alto de todos, para que el trabajo los cubra. Null si ninguno está en la lista.
+ */
+export function pkDeAparatos(nombres, lista) {
+  const aps = nombres.map((n) => (lista || []).find((x) => x.nombre === n)).filter(Boolean);
+  if (!aps.length) return null;
+  if (aps.length === 1) return { pkInicio: aps[0].pkInicio, pkFin: aps[0].pkFin };
+  const ms = aps.flatMap((a) => [a.pkInicio, a.pkFin]).filter(pkValido).map(pkAMetros);
+  if (!ms.length) return null;
+  return { pkInicio: metrosAPk(Math.min(...ms)), pkFin: metrosAPk(Math.max(...ms)) };
+}
+
+/**
+ * Peso del correo de un parte. Las fotos viajan en base64 dentro del Fotos_.txt, que a su vez se
+ * adjunta en base64, y el PDF lleva una copia reducida: en total, unas 2,4 veces lo que pesan.
+ * Gmail admite 25 MB; se avisa a partir de 20 para dejar margen.
+ * Si el PDF no lleva anexo de fotos (HERBICIDA, ver llevaAnexoFotos), solo el doble base64: unas 1,78 veces (1,333 × 1,333).
+ */
+export const LIMITE_CORREO_MB = 20;
+const FACTOR_CORREO = 2.4;
+const FACTOR_CORREO_SIN_ANEXO = 1.78;
+export const factorCorreo = (p) => (llevaAnexoFotos(p) ? FACTOR_CORREO : FACTOR_CORREO_SIN_ANEXO);
+export const pesoCorreoMB = (bytesFotos, factor = FACTOR_CORREO) => bytesFotos.reduce((a, b) => a + b, 0) * factor / 1048576;
+
+/** Cuántas fotos (de tamaño medio) hay que quitar para bajar del límite; 0 si ya cabe. */
+export function fotosAQuitar(bytesFotos, factor = FACTOR_CORREO) {
+  const peso = pesoCorreoMB(bytesFotos, factor);
+  if (!bytesFotos.length || peso <= LIMITE_CORREO_MB) return 0;
+  const mediaMB = peso / bytesFotos.length;
+  return Math.min(bytesFotos.length, Math.ceil((peso - LIMITE_CORREO_MB) / mediaMB));
+}
+
+export const textoBool =(v) => (v === true ? 'si' : v === false ? 'no' : '');
+export const numeroOk = (s) => Number(String(s == null ? '' : s).replace(',', '.')) > 0;
+
+/** Número de semana (ISO) de una fecha «AAAA-MM-DD». */
+export function semanaIso(fecha) {
+  const d = new Date(`${fecha}T12:00:00Z`);
+  if (Number.isNaN(d.getTime())) return '';
+  const dia = (d.getUTCDay() + 6) % 7;
+  d.setUTCDate(d.getUTCDate() - dia + 3);
+  const primerJueves = new Date(Date.UTC(d.getUTCFullYear(), 0, 4));
+  return String(1 + Math.round(((d - primerJueves) / 86400000 - 3 + ((primerJueves.getUTCDay() + 6) % 7)) / 7));
+}
+
+export const PUESTOS_MAQ = [
+  ['encargado', 'Encargado de trabajo', false],
+  ['maquinista', 'Maquinista tipo A', false],
+  ['piloto', 'Piloto', false],
+  ['omi', 'OMI', false],
+  ['operario', 'Operario/s', true],   // el único puesto con varias personas
+];
+// Puestos de cada parte: [clave, título, admite varias personas]
+export const PUESTOS_LD = {
+  locomotora: [['maquinista', 'Maquinista', false], ['responsable', 'Responsable de trabajos', false], ['operario', 'Operario/s', true]],
+  dresina: [['maquinista', 'Maquinista', false], ['amparo', 'ET / al amparo de', false], ['piloto', 'Piloto', false],
+    ['omi', 'OMI', false], ['operario', 'Operario/s', true]],
+};
+export const puestosDe = (p) => (subtipoDe(p) === 'via' ? PUESTOS_MAQ : PUESTOS_LD[subtipoDe(p)]);
+/** Título del puesto en ese parte («Maquinista tipo A» en vía, «Maquinista» en locomotora y dresina). */
+export const nombrePuesto = (p, clave) => (puestosDe(p).find((x) => x[0] === clave) || [, 'Personal'])[1];
+
+/** Los partes de vía y de dresina preguntan si se va en entrega de vía bloqueada (EVB). */
+export const llevaEvb = (p) => subtipoDe(p) !== 'locomotora';
+
+/**
+ * Puestos que no pueden quedar vacíos. Con EVB conduce el OMI y hace falta el encargado de
+ * trabajos (en la dresina, «ET / al amparo de»); sin EVB, el maquinista. La locomotora siempre
+ * lleva maquinista. Mientras no se conteste a la EVB, ninguno.
+ */
+export function puestosObligatorios(p) {
+  if (!llevaEvb(p)) return ['maquinista'];
+  if (p.evb === true) return [subtipoDe(p) === 'dresina' ? 'amparo' : 'encargado', 'omi'];
+  if (p.evb === false) return ['maquinista'];
+  return [];
+}
+
+/** Avisos de la EVB y de los puestos obligatorios que están vacíos. */
+function faltasPuestos(p) {
+  if (llevaEvb(p) && p.evb !== true && p.evb !== false) return ['Indica si va en entrega de vía bloqueada (EVB).'];
+  return puestosObligatorios(p)
+    .filter((clave) => !p.personal.some((x) => x.puesto === clave && String(x.nombre || '').trim()))
+    .map((clave) => {
+      if (!llevaEvb(p)) return 'Elige al maquinista (en «Personal»).';
+      const n = nombrePuesto(p, clave);
+      const nombre = /^.[a-z]/.test(n) ? n[0].toLowerCase() + n.slice(1) : n;   // «OMI» y «ET» se quedan igual
+      return `${p.evb ? 'Con' : 'Sin'} EVB hace falta el ${nombre} (en «Personal»).`;
+    });
+}
+
+export const SUBTIPOS_MAQ = {
+  via: { prefijo: 'MAQ', titulo: 'Parte de maquinaria de vía' },
+  locomotora: { prefijo: 'LOC', titulo: 'Parte de trabajos con locomotora' },
+  dresina: { prefijo: 'DRE', titulo: 'Parte de trabajos con dresina' },
+};
+export const subtipoDe = (p) => p.subtipo || 'via';   // los primeros partes de maquinaria no lo llevan
+
+/** Horas extra de las personas que siguen en el parte y tienen horas puestas. */
+export function extrasDelParte(p) {
+  return (p.personal || [])
+    .map((x) => (p.extras || []).find((e) => e.nombre === x.nombre))
+    .filter((e) => e && Number(e.horas) > 0);
+}
+
+/**
+ * Lo que le falta a un trabajo para poder cerrar el parte: { corto } para la lista de trabajos
+ * y { largo } para el aviso al cerrar. Fotos: antes y después; si el trabajo no está terminado,
+ * basta con una de durante o de después. Un trabajo no realizado, o sin fotos posibles, pide el
+ * motivo en vez de las fotos (y el no realizado, tampoco horas, vía ni PK).
+ */
+export function faltasTrabajo(t, tipo) {
+  const e = [];
+  const add = (corto, largo) => e.push({ corto, largo });
+  const vacio = (s) => !String(s == null ? '' : s).trim();
+  const r = t.referencia || {};
+  if (!r.tipo) add('referencia', 'elige la referencia (SIOS, incidencia o sin referencia).');
+  else if (r.tipo === 'SIN_REF' && vacio(r.motivo)) add('referencia escrita', 'escribe la referencia (has elegido «Sin referencia»).');
+  else if (r.tipo !== 'SIN_REF' && vacio(r.codigo)) add(`nº de ${r.tipo === 'SIOS' ? 'SIOS' : 'incidencia'}`, `falta el número de ${r.tipo === 'SIOS' ? 'SIOS' : 'incidencia'}.`);
+  if (t.noRealizado) {
+    // Trabajo no realizado: horas, vía y PK son opcionales (se ponen si se llegó a ocupar la vía).
+  } else if (!t.sinVia) {
+    if (!horaValida(t.entradaVia)) add('entrada en vía', 'falta la hora de entrada en vía.');
+    if (!horaValida(t.salidaVia)) add('salida de vía', 'falta la hora de salida de vía.');
+    if (vacio(t.via)) add('vía', 'falta la vía.');
+    if (!pkValido(t.pkInicio)) add('PK inicio', 'falta el PK de inicio (km y metros).');
+    if (!pkValido(t.pkFin)) add('PK fin', 'falta el PK de fin (km y metros).');
+  } else {
+    if (!horaValida(t.horaInicio)) add('hora de inicio', 'falta la hora de inicio.');
+    if (!horaValida(t.horaFin)) add('hora de fin', 'falta la hora de fin.');
+  }
+  if (vacio(t.linea)) add('línea', 'falta la línea.');
+  if (t.finalizado == null) add('¿finalizado?', 'indica si está finalizado (Sí o No).');
+  if (t.motivoOtro && vacio(t.motivoActuacion)) add('motivo', 'has elegido «Otro» motivo de actuación: escríbelo.');
+  else if (vacio(t.motivoActuacion)) add('motivo', 'elige el motivo de actuación.');
+  // SUPER entrando en vía: foto del telefonema de entrada y del de salida (aunque «no se han podido hacer fotos»).
+  if (tipo === 'SUPER' && !t.noRealizado && !t.sinVia) {
+    const tel = (fase) => (t.fotos || []).some((f) => f.fase === fase);
+    if (!tel('telentrada')) add('foto telefonema de entrada', 'falta la foto del telefonema de ENTRADA.');
+    if (!tel('telsalida')) add('foto telefonema de salida', 'falta la foto del telefonema de SALIDA.');
+  }
+  // Sin realizar o sin fotos posibles: en vez de las fotos se pide el motivo.
+  if (t.noRealizado) {
+    if (vacio(t.motivoNoRealizado)) {
+      add('por qué no se ha realizado', t.noRealizadoOtro
+        ? 'has elegido «Otro» motivo de no realizado: escríbelo.' : 'indica por qué no se ha realizado.');
+    }
+    return e;
+  }
+  if (t.sinFotos) {
+    if (vacio(t.motivoSinFotos)) {
+      add('por qué no hay fotos', t.sinFotosOtro
+        ? 'has elegido «Otro» motivo para no hacer fotos: escríbelo.' : 'indica por qué no se han podido hacer fotos.');
+    }
+    return e;
+  }
+  const hay = (fase) => t.fotos.some((f) => f.fase === fase);
+  if (!hay('antes')) add('foto de antes', 'falta al menos una foto de ANTES.');
+  if (t.finalizado === false) {
+    if (!hay('durante') && !hay('despues')) add('foto de durante o después', 'falta al menos una foto de DURANTE o de DESPUÉS.');
+  } else if (!hay('despues')) {
+    add('foto de después', 'falta al menos una foto de DESPUÉS.');
+  }
+  return e;
+}
+
+/** Jornada sin trabajos (no se pudo trabajar): el aviso si falta el motivo; si no, null. */
+export function faltaMotivoSinTrabajos(p) {
+  if (String(p.motivoSinTrabajos == null ? '' : p.motivoSinTrabajos).trim()) return null;
+  return p.sinTrabajosOtro ? 'Has elegido «Otro» motivo: escribe por qué no se ha podido trabajar.'
+    : 'Indica por qué no se ha podido trabajar.';
+}
+
+export function validar(p) {
+  const e = [];
+  const add = (msg, trabajo = null) => e.push({ msg, trabajo });
+  const vacio = (s) => !String(s == null ? '' : s).trim();
+  if (!p.fecha) add('Falta la fecha de la jornada.');
+  if (!p.personal.length) add('Añade al menos una persona en «Personal».');
+  // Jornada sin trabajos: solo hace falta el motivo; no se piden trabajos, maquinaria ni medidas.
+  if (p.sinTrabajos) {
+    if (faltaMotivoSinTrabajos(p)) add(faltaMotivoSinTrabajos(p));
+    return e;
+  }
+  if (!p.trabajos.length) add('Añade al menos un trabajo.');
+  p.trabajos.forEach((t, i) => {
+    for (const f of faltasTrabajo(t, p.tipo)) add(`Trabajo ${i + 1}: ${f.largo}`, i);
+  });
+  if (p.usaExtras) {
+    const hs = extrasDelParte(p);
+    if (!hs.length) add('Has marcado horas extra: pon las horas de quien las haya hecho (o marca «No»).');
+    hs.filter((e) => !e.tipo).forEach((e) => add(`Horas extra de ${e.nombre}: elige si son normales, nocturnas o festivas.`));
+  }
+  if (p.usaMaquinaria == null) add('Indica si se ha usado maquinaria (Sí o No).');
+  else if (p.usaMaquinaria && !p.maquinas.some((v) => !vacio(v.descripcion))) {
+    add('Has marcado que se ha usado maquinaria: elige cuál (o marca «No»).');
+  }
+  if (p.usaVehiculos == null) add('Indica si se han usado vehículos (Sí o No).');
+  else if (p.usaVehiculos && !p.vehiculos.some((v) => !vacio(v.descripcion))) {
+    add('Has marcado que se han usado vehículos: elige cuál (o marca «No»).');
+  }
+  if (p.medidasOtrasSi && vacio(p.medidasOtras)) add('Has marcado «Otras» medidas antiincendios: escribe cuáles.');
+  else if (vacio(p.antiincendios)) add('Marca al menos una medida antiincendios.');
+  return e;
+}
+
+// ---------- Parte HERBICIDA ----------
+
+/** Mismo nombre sin mirar tildes, mayúsculas ni espacios de más. */
+export const mismoNombre = (a, b) => {
+  const n = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+  return Boolean(n(a)) && n(a) === n(b);
+};
+
+/**
+ * «1.200» escrito a mano: ¿mil doscientos o uno coma dos? La app lee el punto como decimal (1,2), así
+ * que se pide escribirlo sin dudas en vez de adivinar. Los datos de la lista de la campaña no se miran.
+ */
+export const pareceMiles = (s) => /^[1-9]\d{0,2}(\.\d{3})+$/.test(String(s == null ? '' : s).trim());   // «0.125» no: es decimal
+const dudaMiles = (s) => `«${String(s).trim()}»: escríbelo sin punto (${String(s).trim().replace(/\./g, '')}) o, si lleva decimales, con coma.`;
+
+/**
+ * Lo que le falta a un caso SIOS: nº, línea, vía, PK, m², el medio (si en el parte hay mochila y
+ * máquina), los m² hechos si es «solo una parte», y fotos de antes y de después (o el motivo de no tenerlas).
+ */
+export function faltasCaso(t, p) {
+  const e = [];
+  const add = (corto, largo) => e.push({ corto, largo });
+  const vacio = (s) => !String(s == null ? '' : s).trim();
+  if (vacio((t.referencia || {}).codigo)) add('nº de SIOS', 'falta el número de SIOS.');
+  if (vacio(t.linea)) add('línea', 'falta la línea.');
+  if (vacio(t.via)) add('vía', 'falta la vía.');
+  if (!pkValido(t.pkInicio)) add('PK inicio', 'falta el PK de inicio (km y metros).');
+  if (!pkValido(t.pkFin)) add('PK fin', 'falta el PK de fin (km y metros).');
+  if (!numeroOk(t.superficie)) add('m² del caso', 'faltan los m² del caso.');
+  else if (!t.deLista && pareceMiles(t.superficie)) add('m² del caso', `m² del caso: ${dudaMiles(t.superficie)}`);
+  if (p && p.usaMochila && p.usaMaquina && !t.medio) add('mochila o máquina', 'elige si se ha regado con mochila, máquina o ambas.');
+  if (t.parcial) {
+    if (!numeroOk(t.m2Hechos)) add('m² hechos', 'has marcado «Solo una parte»: pon los m² hechos.');
+    else if (pareceMiles(t.m2Hechos)) add('m² hechos', `m² hechos: ${dudaMiles(t.m2Hechos)}`);
+    else if (numeroOk(t.superficie) && aNumero(t.m2Hechos) > aNumero(t.superficie)) add('m² hechos', 'los m² hechos no pueden pasar de los m² del caso.');
+  }
+  if (t.sinFotos) {
+    if (vacio(t.motivoSinFotos)) {
+      add('por qué no hay fotos', t.sinFotosOtro
+        ? 'has elegido «Otro» motivo para no hacer fotos: escríbelo.' : 'indica por qué no se han podido hacer fotos.');
+    }
+    return e;
+  }
+  const hay = (fase) => (t.fotos || []).some((f) => f.fase === fase);
+  if (!hay('antes')) add('foto de antes', 'falta al menos una foto de ANTES.');
+  if (!hay('despues')) add('foto de después', 'falta al menos una foto de DESPUÉS.');
+  return e;
+}
+
+export function faltasOcupacion(o) {
+  const e = [];
+  const add = (corto, largo) => e.push({ corto, largo });
+  const vacio = (s) => !String(s == null ? '' : s).trim();
+  if (vacio(o.acta)) add('nº de acta', 'falta el nº de acta.');
+  if (vacio(o.telefonema)) add('telefonema', 'falta el nº de telefonema.');
+  if (!horaValida(o.entrada)) add('hora de entrada', 'falta la hora de entrada en vía.');
+  if (!horaValida(o.salida)) add('hora de salida', 'falta la hora de salida de vía.');
+  if (vacio(o.linea)) add('línea', 'falta la línea.');
+  if (vacio(o.via)) add('vía', 'falta la vía.');
+  if (!pkValido(o.pkInicio)) add('PK inicio', 'falta el PK de inicio.');
+  if (!pkValido(o.pkFin)) add('PK fin', 'falta el PK de fin.');
+  if (o.terminada == null) add('¿terminada?', 'indica si se ha terminado (Sí o No).');
+  return e;
+}
+
+export function validarHer(p) {
+  const e = [];
+  const add = (msg, trabajo = null) => e.push({ msg, trabajo });
+  const vacio = (s) => !String(s == null ? '' : s).trim();
+  if (!p.fecha) add('Falta la fecha de la jornada.');
+  if (!p.personal.length) add('Añade al menos una persona en «Personal».');
+  else if (!p.personal.some((x) => mismoNombre(x.nombre, p.capataz))) add(`El aplicador cualificado (${p.capataz}) tiene que estar en «Personal».`);
+  if (p.sinTrabajos) {
+    if (faltaMotivoSinTrabajos(p)) add(faltaMotivoSinTrabajos(p));
+    return e;
+  }
+  if (p.sinOcupacion) {
+    if (!horaValida(p.horaInicio)) add('Hoy no se ha ocupado la vía: falta la hora de inicio.');
+    if (!horaValida(p.horaFin)) add('Hoy no se ha ocupado la vía: falta la hora de fin.');
+  } else if (!(p.ocupaciones || []).length) {
+    add('Añade al menos una ocupación de vía (o marca «Hoy no se ha ocupado la vía»).');
+  } else {
+    p.ocupaciones.forEach((o, i) => faltasOcupacion(o).forEach((f) => add(`Ocupación ${i + 1}: ${f.largo}`)));
+  }
+  if (!p.usaMochila && !p.usaMaquina) add('Indica cómo se ha regado: mochila, máquina o las dos.');
+  if (p.usaMaquina && p.maquinaHer && p.maquinaHer.otro && vacio(p.maquinaHer.descripcion)) add('Has elegido «Otra» máquina: escribe cuál.');
+  if (!p.trabajos.length) add('Añade al menos un caso SIOS.');
+  // Repetidos por las cifras del nº («S-385952» y «385952» son el mismo caso), igual que el nombre de las fotos.
+  const vistos = new Map();
+  p.trabajos.forEach((t, i) => {
+    for (const f of faltasCaso(t, p)) add(`Caso ${i + 1}: ${f.largo}`, i);
+    const c = codigoSios(t);
+    if (c && vistos.has(c)) add(`Caso ${i + 1}: el SIOS ${c} ya está en el caso ${vistos.get(c) + 1}.`, i);
+    else if (c) vistos.set(c, i);
+  });
+  // Los productos vacíos no cuentan, pero el número del mensaje es el de la pantalla (Producto 1, 2, 3).
+  const usado = (x) => !vacio(x.nombre) || x.otro || !vacio(x.dosis);
+  if (!(p.productos || []).some(usado)) add('Pon al menos un producto con su dosis.');
+  (p.productos || []).forEach((x, i) => {
+    if (!usado(x)) return;
+    if (vacio(x.nombre)) add(`Producto ${i + 1}: ${x.otro ? 'escribe cuál es' : 'elige el producto'}.`);
+    if (!numeroOk(x.dosis)) add(`Producto ${i + 1}: pon la dosis (ml por litro).`);
+    else if (pareceMiles(x.dosis)) add(`Producto ${i + 1}: dosis ${dudaMiles(x.dosis)}`);
+  });
+  if (!numeroOk(p.caldo)) add('Pon los litros de caldo gastados.');
+  else if (pareceMiles(p.caldo)) add(`Caldo gastado ${dudaMiles(p.caldo)}`);
+  if (!p.confirmaCantidades) add('Marca que el caldo y la dosis son las cantidades reales.');
+  if (p.usaExtras) {
+    const hs = extrasDelParte(p);
+    if (!hs.length) add('Has marcado horas extra: pon las horas de quien las haya hecho (o marca «No»).');
+    hs.filter((x) => !x.tipo).forEach((x) => add(`Horas extra de ${x.nombre}: elige si son normales, nocturnas o festivas.`));
+  }
+  if (p.medidasOtrasSi && vacio(p.medidasOtras)) add('Has marcado «Otras» medidas antiincendios: escribe cuáles.');
+  else if (vacio(p.antiincendios)) add('Marca al menos una medida antiincendios.');
+  return e;
+}
+
+export function faltasTajo(t) {
+  const e = [];
+  const add = (corto, largo) => e.push({ corto, largo });
+  [['llegada', 'llegada a tajo'], ['inicio', 'inicio de trabajo'], ['fin', 'fin de trabajo'], ['salida', 'salida de tajo']]
+    .forEach(([k, txt]) => { if (!horaValida(t[k])) add(txt, `falta la hora de ${txt}.`); });
+  if (!t.via) add('vía', 'elige al menos una vía.');
+  if (!pkValido(t.pkInicio)) add('PK inicio', 'falta el PK de inicio (km y metros).');
+  if (!pkValido(t.pkFin)) add('PK final', 'falta el PK final (km y metros).');
+  const op = (nombre, o, si) => {
+    if (o.si == null) add(nombre.toLowerCase(), `${nombre}: contesta Sí o No.`);
+    else if (o.si) si();
+  };
+  const geometria = (nombre, o, metodos, etqMax) => op(nombre, o, () => {
+    if (!o.modo) add(`método de ${nombre.toLowerCase()}`, `${nombre}: elige ${metodos}.`);
+    else if (o.modo === 'calculado') {
+      if (!numeroOk(o.max)) add(etqMax, `${nombre} calculado: falta el ${etqMax} (mm).`);
+      if (!pkValido(o.pk)) add(`PK del ${etqMax}`, `${nombre} calculado: falta el PK del ${etqMax.replace(/\.$/, '')}.`);
+    }
+  });
+  geometria('Nivelado', t.nivelado, 'Calculado, Manual o Visor', 'Lev. máx.');
+  geometria('Alineado', t.alineado, 'Calculado, Auto o Visor', 'Rip. máx.');
+  op('Estabilizado', t.estabilizado, () => {
+    if (t.estabilizado.programada == null) add('¿programada?', 'Estabilizado: indica si es programada (Sí o No).');
+  });
+  op('Registro', t.registro, () => {
+    if (!t.registro.cuando) add('registro antes/después', 'Registro: elige Antes, Después o Ambos.');
+  });
+  op('Perfilado', t.perfilado, () => {
+    if (t.perfilado.cepillado == null) add('cepillado', 'Perfilado: indica si hay cepillado (Sí o No).');
+  });
+  return e;
+}
+
+export function faltasRealizado(r) {
+  const e = [];
+  const add = (corto, largo) => e.push({ corto, largo });
+  if (!r.via) add('vía', 'elige al menos una vía.');
+  if (!pkValido(r.pkInicio)) add('PK inicio', 'falta el PK de inicio (km y metros).');
+  if (!pkValido(r.pkFin)) add('PK fin', 'falta el PK de fin (km y metros).');
+  if (!horaValida(r.horaInicio)) add('hora inicio', 'falta la hora de inicio.');
+  if (!horaValida(r.horaFin)) add('hora fin', 'falta la hora de fin.');
+  if (!String(r.trabajo || '').trim()) add('trabajo', 'escribe el trabajo realizado.');
+  return e;
+}
+
+export function validarMaq(p) {
+  const e = [];
+  const add = (msg) => e.push({ msg, trabajo: null });
+  const vacio = (s) => !String(s == null ? '' : s).trim();
+  if (!p.fecha) add('Falta la fecha de la jornada.');
+  // Jornada sin trabajos (p. ej. avería): basta con la fecha, la máquina y el motivo.
+  if (p.sinTrabajos) {
+    if (!p.maquinasVia.some((m) => !vacio(m.descripcion))) add('Elige la máquina.');
+    if (faltaMotivoSinTrabajos(p)) add(faltaMotivoSinTrabajos(p));
+    p.personal.forEach((x) => { if (vacio(x.nombre)) add(`${nombrePuesto(p, x.puesto)}: escribe el nombre o quítalo.`); });
+    return e;
+  }
+  if (!horaValida(p.horaInicio) || !horaValida(p.horaFin)) add('Falta el horario de la jornada (inicio y fin).');
+  faltasPuestos(p).forEach(add);
+  const maquinas = p.maquinasVia.filter((m) => !vacio(m.descripcion));
+  if (!maquinas.length) add('Elige al menos una máquina.');
+  p.maquinasVia.forEach((m, i) => {
+    if (m.otro && vacio(m.descripcion)) add(`Máquina ${i + 1}: escribe cuál es.`);
+    else if (!vacio(m.descripcion) && !numeroOk(m.horas)) add(`Pon las horas de ${m.descripcion}.`);
+  });
+  const v = p.viaje;
+  if (!horaValida(v.horaSalida)) add('Viaje: falta la hora de salida.');
+  if (vacio(v.lugarSalida)) add('Viaje: falta el lugar de salida.');
+  if (!horaValida(v.horaLlegada)) add('Viaje: falta la hora de llegada.');
+  if (vacio(v.lugarLlegada)) add('Viaje: falta el lugar de llegada.');
+  if (!p.tajos.length) add('Añade al menos un tajo.');
+  p.tajos.forEach((t, i) => faltasTajo(t).forEach((f) => add(`Tajo ${i + 1}: ${f.largo}`)));
+  p.personal.forEach((x) => { if (vacio(x.nombre)) add(`${nombrePuesto(p, x.puesto)}: escribe el nombre o quítalo.`); });
+  if (p.usaExtras) {
+    const hs = extrasDelParte(p);
+    if (!hs.length) add('Has marcado horas extra: pon las horas de quien las haya hecho (o marca «No»).');
+    hs.filter((x) => !x.tipo).forEach((x) => add(`Horas extra de ${x.nombre}: elige si son normales, nocturnas o festivas.`));
+  }
+  return e;
+}
+
+export function validarLD(p) {
+  const e = [];
+  const add = (msg) => e.push({ msg, trabajo: null });
+  const vacio = (s) => !String(s == null ? '' : s).trim();
+  const loco = subtipoDe(p) === 'locomotora';
+  if (!p.fecha) add('Falta la fecha.');
+  if (vacio(p.maquina.descripcion)) add(`Escribe qué ${loco ? 'locomotora' : 'dresina'} es.`);
+  // Jornada sin trabajos (p. ej. avería): basta con la fecha, la máquina y el motivo.
+  if (p.sinTrabajos) {
+    if (faltaMotivoSinTrabajos(p)) add(faltaMotivoSinTrabajos(p));
+    p.personal.forEach((x) => { if (vacio(x.nombre)) add(`${nombrePuesto(p, x.puesto)}: escribe el nombre o quítalo.`); });
+    return e;
+  }
+  if (vacio(p.acta)) add('Falta el nº de acta.');
+  faltasPuestos(p).forEach(add);
+  if (!horaValida(p.salida.hora)) add('Falta la hora de salida.');
+  if (vacio(p.salida.lugar)) add('Falta el lugar de salida.');
+  if (!horaValida(p.apartado.hora)) add('Falta la hora de apartado.');
+  if (vacio(p.apartado.lugar)) add('Falta el lugar de apartado.');
+  if (loco) {
+    p.vagones.forEach((v, i) => {
+      if (!v.tipo) add(`Vagón ${i + 1}: elige tolva o plataforma.`);
+      if (!/^\d{4}$/.test(String(v.uic || '').trim())) add(`Vagón ${i + 1}: pon los 4 últimos dígitos del UIC.`);
+      if (v.tipo === 'tolva' && !numeroValido(v.m3)) add(`Vagón ${i + 1}: pon los m³ descargados.`);
+    });
+  }
+  if (!p.realizados.length) add('Añade al menos un trabajo realizado.');
+  p.realizados.forEach((r, i) => faltasRealizado(r).forEach((f) => add(`Trabajo ${i + 1}: ${f.largo}`)));
+  if (!numeroValido(p.combustible.salida) || !numeroValido(p.combustible.llegada)) add('Falta el combustible de salida y de llegada.');
+  if (!numeroValido(p.km.salida) || !numeroValido(p.km.llegada)) add('Faltan los kilómetros de salida y de llegada.');
+  p.personal.forEach((x) => { if (vacio(x.nombre)) add(`${nombrePuesto(p, x.puesto)}: escribe el nombre o quítalo.`); });
+  if (p.usaExtras) {
+    const hs = extrasDelParte(p);
+    if (!hs.length) add('Has marcado horas extra: pon las horas de quien las haya hecho (o marca «No»).');
+    hs.filter((x) => !x.tipo).forEach((x) => add(`Horas extra de ${x.nombre}: elige si son normales, nocturnas o festivas.`));
+  }
+  return e;
+}

@@ -1,0 +1,1304 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#14213d">
+<link rel="icon" href="../icons/icon-192.png">
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Guía de Partes LAV</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: banda azul marino con traviesas (como el icono), selector de dispositivo en cuadrícula y reproductor
+   (aparato animado + explicación); en móvil el aparato y la explicación caben juntos en una pantalla */
+:root{
+  --bg:#F2F4F8; --surface:#FFFFFF; --sunken:#E8ECF2; --fg:#0F1A2E; --muted:#56627A; --line:#D3DAE4;
+  --brand:#14213D; --accent:#E2661B; --accent-ink:#FFFFFF; --accent-text:#B5500F; --rail:#E2661B;
+  --sel-bg:#14213D; --sel-fg:#FFFFFF; --shadow:rgba(15,26,46,.32);
+  --frame:#11161F; --frame-edge:#2B3240;
+  --f-display:"Barlow Condensed","Arial Narrow",sans-serif;
+  --f-body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:ui-monospace,"Cascadia Mono",Consolas,monospace;
+  --dur:5200ms;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0A1020; --surface:#121A2E; --sunken:#0D1426; --fg:#E8ECF4; --muted:#9AA6BD; --line:#26324C;
+  --accent:#FF8A3D; --accent-ink:#1B0B02; --accent-text:#FF9F5E; --rail:#E2661B;
+  --sel-bg:#E8ECF4; --sel-fg:#0F1A2E; --shadow:rgba(0,0,0,.7); --frame:#05070B; --frame-edge:#3A4356; color-scheme:dark }}
+:root[data-theme="dark"]{
+  --bg:#0A1020; --surface:#121A2E; --sunken:#0D1426; --fg:#E8ECF4; --muted:#9AA6BD; --line:#26324C;
+  --accent:#FF8A3D; --accent-ink:#1B0B02; --accent-text:#FF9F5E; --rail:#E2661B;
+  --sel-bg:#E8ECF4; --sel-fg:#0F1A2E; --shadow:rgba(0,0,0,.7); --frame:#05070B; --frame-edge:#3A4356; color-scheme:dark }
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:16px;line-height:1.5;-webkit-text-size-adjust:100%}
+.wrap{max-width:1120px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:2.5px solid var(--accent);outline-offset:2px}
+code{font-family:var(--f-mono);font-size:.88em;overflow-wrap:anywhere}
+
+/* ---------- Cabecera ---------- */
+.hero{color:#fff;border-bottom:3px solid var(--rail);
+  background:repeating-linear-gradient(90deg,transparent 0 54px,rgba(226,102,27,.10) 54px 66px),linear-gradient(160deg,#14213D 0%,#1C2F57 100%)}
+.hero-in{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,420px);gap:12px 40px;align-items:end;padding-block:30px 26px}
+.brand{display:flex;align-items:center;gap:14px}
+.brand .pl{flex:none;width:54px;height:54px;border-radius:14px;box-shadow:0 0 0 1px rgba(255,255,255,.18),0 8px 18px -8px rgba(0,0,0,.6)}
+.eyebrow{margin:0 0 3px;font-family:var(--f-display);font-weight:600;font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:#F6A672}
+h1{margin:0;font-family:var(--f-display);font-weight:700;font-size:clamp(28px,4.4vw,44px);line-height:1;text-wrap:balance}
+.lede{grid-column:1;margin:0;max-width:56ch;color:rgba(255,255,255,.8);font-size:16px}
+.urlbox{grid-column:2;grid-row:1/span 2;display:flex;flex-direction:column;gap:6px;padding:12px 12px 12px 16px;border:1px solid rgba(255,255,255,.18);border-radius:14px;background:rgba(255,255,255,.07);min-width:0}
+.urlbox{border-color:rgba(246,166,114,.55);background:rgba(226,102,27,.12)}
+.urlbox .lbl{display:flex;align-items:center;gap:8px;font-family:var(--f-display);font-size:17px;font-weight:700;letter-spacing:.02em;color:#fff}
+.lbl-n{display:grid;place-items:center;flex:none;width:22px;height:22px;border-radius:50%;background:#E2661B;color:#fff;font-family:var(--f-body);font-size:12px}
+.url-row{display:flex;align-items:center;gap:10px;min-width:0;padding:6px 6px 6px 12px;border-radius:10px;background:rgba(10,16,32,.45)}
+.url-row code{flex:1;min-width:0;font-size:14px;color:#fff}
+.copy{flex:none;display:flex;align-items:center;gap:6px;min-height:40px;padding:0 16px;border:0;border-radius:9px;background:#E2661B;color:#fff;font-weight:700;font-size:14.5px}
+.copy svg{width:17px;height:17px}
+.copy:hover{background:#C9560F}
+.copy.ok{background:#1E8E3E}
+.urlbox .hint{font-size:13px;color:rgba(255,255,255,.7)}
+.paste{position:absolute;z-index:5;padding:9px 16px;border-radius:10px;background:#2C2C2E;color:#fff;font-size:14px;box-shadow:0 6px 16px rgba(0,0,0,.3);animation:pop .3s ease .5s backwards}
+.paste::after{content:"";position:absolute;left:28px;width:12px;height:12px;background:inherit;transform:rotate(45deg)}
+.saf-type{position:relative}
+.saf-type .paste{left:14px;bottom:52px}
+.saf-type .paste::after{bottom:-5px}
+.cr-bar{position:relative}
+.cr-bar .paste{left:52px;top:50px;background:#F1EAE6;color:#1E1A19}
+.cr-bar .paste::after{top:-5px}
+.pc-url .paste{left:10px;top:40px;padding:7px 14px;border-radius:8px;background:#fff;color:#1F1F1F;font-size:12.5px;box-shadow:0 4px 14px rgba(0,0,0,.25)}
+.pc-url .paste::after{top:-5px;box-shadow:-1px -1px 0 rgba(0,0,0,.06)}
+.paste small{font-size:.85em;opacity:.6}
+
+/* Esta misma guía, dibujada dentro del aparato */
+.gp{position:relative;height:100%;overflow:hidden;background:#F2F4F8;color:#0F1A2E}
+.gp-hero{padding:16px 14px 14px;border-bottom:2.5px solid #E2661B;color:#fff;background:repeating-linear-gradient(90deg,transparent 0 30px,rgba(226,102,27,.12) 30px 37px),linear-gradient(160deg,#14213D,#1C2F57)}
+.gp-brand{display:flex;align-items:center;gap:10px}
+.gp-brand .pl{flex:none;width:36px;height:36px;border-radius:9px}
+.gp-brand small{display:block;font-size:8px;font-weight:700;letter-spacing:.12em;color:#F6A672}
+.gp-brand b{display:block;font-family:var(--f-display);font-size:19px;line-height:1.02}
+.gp-box{margin-top:12px;padding:9px;border:1px solid rgba(246,166,114,.55);border-radius:10px;background:rgba(226,102,27,.14)}
+.gp-l{display:flex;align-items:center;gap:6px;margin-bottom:7px;font-family:var(--f-display);font-size:14px;font-weight:700}
+.gp-l em{display:grid;place-items:center;width:17px;height:17px;border-radius:50%;background:#E2661B;font-family:var(--f-body);font-size:9.5px;font-style:normal}
+.gp-row{display:flex;align-items:center;gap:8px;padding:5px 5px 5px 9px;border-radius:8px;background:rgba(10,16,32,.45)}
+.gp-row code{flex:1;min-width:0;font-family:ui-monospace,Consolas,monospace;font-size:10px;line-height:1.3;color:#fff;overflow-wrap:anywhere}
+.gp-copy{flex:none;padding:8px 11px;border-radius:7px;background:#E2661B;color:#fff;font-size:11.5px;font-weight:700;transition:background .25s}
+.gp-copy.ok{background:#1E8E3E}
+.gp-tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:12px}
+.gp-tabs span{padding:7px 9px;border:1px solid #D3DAE4;border-radius:9px;background:#fff;font-size:9.5px;color:#56627A}
+.gp-tabs b{display:block;font-family:var(--f-display);font-size:14px;color:#0F1A2E}
+.gp-dev{height:200px;margin:0 12px;border:1px solid #D3DAE4;border-radius:12px;background:radial-gradient(120% 90% at 50% 0%,#fff,#E8ECF2)}
+.pcw .gp-hero{display:grid;grid-template-columns:1fr 290px;gap:24px;align-items:center;padding:18px 34px}
+.pcw .gp-box{margin:0}
+.pcw .gp-tabs{grid-template-columns:repeat(4,1fr);padding:12px 34px}
+.pcw .gp-dev{height:140px;margin:0 34px}
+.ctoast{position:absolute;z-index:4;left:50%;bottom:44px;padding:9px 16px;border-radius:999px;background:#3A3431;color:#EDE6E2;font-size:12px;white-space:nowrap;transform:translateX(-50%);opacity:0;transition:opacity .3s}
+.ctoast.show{opacity:1}
+
+/* ---------- Pestañas ---------- */
+main.wrap{padding-block:20px 56px}
+.tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:18px}
+.tab{position:relative;display:flex;flex-direction:column;align-items:flex-start;padding:10px 12px 11px 46px;border:1.5px solid var(--line);border-radius:13px;background:var(--surface);text-align:left;transition:border-color .15s,background .15s}
+.tab .n{position:absolute;left:13px;top:50%;display:grid;place-items:center;width:23px;height:23px;margin-top:-11.5px;border-radius:50%;background:var(--sunken);color:var(--muted);font-size:12px;font-weight:700}
+.tab small{font-size:12.5px;line-height:1.2;color:var(--muted)}
+.tab b{font-family:var(--f-display);font-size:21px;line-height:1.1;letter-spacing:.01em}
+.tab:hover{border-color:var(--accent)}
+.tab[aria-selected="true"]{border-color:var(--sel-bg);background:var(--sel-bg);color:var(--sel-fg)}
+.tab[aria-selected="true"] small{color:inherit;opacity:.7}
+.tab[aria-selected="true"] .n{background:var(--accent);color:#fff}
+
+/* ---------- Reproductor ---------- */
+.player{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,400px);gap:32px;align-items:start;scroll-margin-top:10px}
+.stage{display:flex;justify-content:center;align-items:center;padding:24px 16px;border:1px solid var(--line);border-radius:20px;background:radial-gradient(120% 90% at 50% 0%,var(--surface),var(--sunken))}
+.device{position:relative;flex:none;background:var(--frame);box-shadow:0 0 0 1.5px var(--frame-edge),0 26px 50px -24px var(--shadow)}
+.device.phone{height:clamp(420px,calc(100vh - 345px),620px);aspect-ratio:9/19.3;max-width:100%;padding:10px;border-radius:48px}
+.device.pc{width:100%;max-width:680px;aspect-ratio:16/10.4;padding:9px;border-radius:14px}
+.device.pc::after{content:"";position:absolute;left:50%;bottom:-16px;width:34%;height:9px;transform:translateX(-50%);border-radius:0 0 10px 10px;background:var(--frame);box-shadow:0 0 0 1.5px var(--frame-edge)}
+.scr{position:relative;width:100%;height:100%;overflow:hidden;background:#000;color:#111;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;line-height:1.3;-webkit-font-smoothing:antialiased}
+.phone .scr{border-radius:38px}
+.pc .scr{border-radius:5px}
+#zoom{position:absolute;left:0;top:0;transform-origin:0 0}
+#zoom[data-os="ios"]::after{content:"";position:absolute;z-index:40;top:11px;left:50%;width:92px;height:27px;margin-left:-46px;border-radius:999px;background:#000}
+#zoom[data-os="and"]::after{content:"";position:absolute;z-index:40;top:11px;left:50%;width:12px;height:12px;margin-left:-6px;border-radius:50%;background:#000}
+#screen{position:absolute;inset:0;font-size:12px}
+#screen>*{position:absolute;inset:0;animation:fadein .35s ease}
+
+.side{display:flex;flex-direction:column;gap:14px;min-width:0}
+.prog{display:flex;gap:5px}
+.prog span{flex:1;height:5px;overflow:hidden;border-radius:3px;background:var(--line)}
+.prog span.done{background:var(--accent)}
+.prog i{display:block;width:0;height:100%;background:var(--accent)}
+.prog .on i{animation:fill var(--dur) linear forwards}
+.paused .prog .on i{animation-play-state:paused}
+.count{font-family:var(--f-display);font-weight:600;font-size:14px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent-text)}
+.now h2{margin:2px 0 6px;font-family:var(--f-display);font-weight:700;font-size:34px;line-height:1.02;text-wrap:balance}
+.now p{min-height:4.6em;margin:0;color:var(--muted);font-size:16.5px}
+.now p b{color:var(--fg)}
+.now code{padding:1px 5px;border-radius:5px;background:var(--sunken);color:var(--fg)}
+.ctrl{display:grid;grid-template-columns:1fr 1.25fr 1fr;gap:8px}
+.cbtn{display:flex;align-items:center;justify-content:center;gap:6px;min-height:48px;padding:0 10px;border:1.5px solid var(--line);border-radius:12px;background:var(--surface);font-weight:600;font-size:15px;white-space:nowrap}
+.cbtn svg{flex:none;width:18px;height:18px}
+.cbtn:hover:not(:disabled){border-color:var(--accent)}
+.cbtn.primary{border-color:var(--accent);background:var(--accent);color:var(--accent-ink)}
+.cbtn:disabled{opacity:.38;cursor:default}
+.nextguide{display:flex;align-items:center;justify-content:center;gap:8px;min-height:52px;border:0;border-radius:12px;background:var(--sel-bg);color:var(--sel-fg);font-weight:700;font-size:16px;animation:fadein .4s ease}
+.nextguide svg{width:18px;height:18px}
+.steps{margin:2px 0 0;padding:0;list-style:none;border-top:1px solid var(--line)}
+.steps button{display:grid;grid-template-columns:26px minmax(0,1fr);align-items:center;gap:12px;width:100%;padding:9px 2px;border:0;border-bottom:1px solid var(--line);background:none;color:var(--muted);text-align:left;font-size:15px}
+.steps button:hover{color:var(--fg)}
+.steps .n{display:grid;place-items:center;width:24px;height:24px;border:1.5px solid var(--line);border-radius:50%;font-size:12px;font-weight:700;font-variant-numeric:tabular-nums}
+.steps .done button{color:var(--fg)}
+.steps .done .n{border-color:var(--fg);background:var(--fg);color:var(--bg)}
+.steps .on button{color:var(--fg);font-weight:600}
+.steps .on .n{border-color:var(--accent);background:var(--accent);color:var(--accent-ink)}
+
+/* ---------- Ayuda ---------- */
+.help{margin-top:48px}
+.help h2{margin:0 0 4px;font-family:var(--f-display);font-weight:700;font-size:30px}
+.help>p{margin:0 0 14px;color:var(--muted)}
+.faq{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;align-items:start}
+.faq details{border:1px solid var(--line);border-radius:13px;background:var(--surface)}
+.faq summary{display:flex;justify-content:space-between;gap:12px;padding:14px 16px;font-weight:600;cursor:pointer;list-style:none}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary::after{content:"+";flex:none;font-size:22px;font-weight:600;line-height:1;color:var(--accent-text)}
+.faq details[open] summary::after{content:"–"}
+.faq p{margin:0;padding:0 16px 15px;color:var(--muted);font-size:15.5px}
+.foot{margin-top:40px;padding-top:16px;border-top:1px solid var(--line);color:var(--muted);font-size:14px}
+.foot a{color:var(--accent-text)}
+
+@media (max-width:860px){
+  .hero-in{grid-template-columns:minmax(0,1fr);gap:12px;padding-block:18px 16px}
+  .brand{gap:12px}
+  .brand .pl{width:44px;height:44px;border-radius:11px}
+  .eyebrow{font-size:12px}
+  .lede{font-size:15px}
+  .urlbox{grid-column:1;grid-row:auto;gap:8px;padding:12px;border-radius:14px}
+  .urlbox .lbl{font-size:16px}
+  .url-row code{font-size:13px}
+  .urlbox .hint{font-size:12.5px}
+  main.wrap{padding-block:14px 48px}
+  .tabs{grid-template-columns:repeat(2,minmax(0,1fr));margin-bottom:14px}
+  .tab{padding:8px 10px 9px 42px}
+  .tab .n{left:11px}
+  .tab b{font-size:19px}
+  .player{grid-template-columns:minmax(0,1fr);gap:14px}
+  .stage{padding:16px 10px;border-radius:18px}
+  .device.phone{height:clamp(360px,54vh,560px);padding:8px;border-radius:40px}
+  .phone .scr{border-radius:32px}
+  .now h2{font-size:27px}
+  .now p{min-height:4.5em;font-size:15.5px}
+  .steps{display:none}
+  .ctrl{grid-template-columns:auto minmax(0,1fr) auto}
+  .cbtn{padding:0 13px;font-size:14.5px}
+  .faq{grid-template-columns:minmax(0,1fr)}
+}
+
+@keyframes fadein{from{opacity:0}to{opacity:1}}
+@keyframes up{from{transform:translateY(100%)}to{transform:none}}
+@keyframes drop{from{transform:translateY(-6px);opacity:0}to{transform:none;opacity:1}}
+@keyframes pop{from{transform:scale(.88);opacity:0}to{transform:none;opacity:1}}
+@keyframes blink{50%{opacity:0}}
+@keyframes fill{to{width:100%}}
+@keyframes ring{0%,30%{transform:scale(.4);opacity:0}45%{opacity:.95}100%{transform:scale(1.6);opacity:0}}
+@keyframes press{0%,28%,62%,100%{transform:translate(0,0) scale(1)}42%,50%{transform:translate(0,3px) scale(.94)}}
+
+/* ---------- Dedo / puntero ---------- */
+.tap{position:absolute;z-index:50;width:0;height:0;pointer-events:none;transition:left .55s cubic-bezier(.3,.7,.3,1),top .55s cubic-bezier(.3,.7,.3,1)}
+.tap .ring{position:absolute;left:-17px;top:-17px;width:34px;height:34px;border-radius:50%;border:2.5px solid #E2661B;background:rgba(226,102,27,.28);animation:ring 1.7s ease-out infinite}
+.tap .hand{position:absolute;left:-13.5px;top:-1px;width:36px;height:46px;transform-origin:13.5px 1px;filter:drop-shadow(0 3px 4px rgba(0,0,0,.35));animation:press 1.7s ease-in-out infinite}
+.tap.cursor .ring{left:-12px;top:-12px;width:24px;height:24px}
+.tap.cursor .hand{left:-3px;top:-2px;width:18px;height:22px;transform-origin:3px 2px}
+.hit{outline:2.5px solid #E2661B;outline-offset:2px}
+
+/* ---------- Pantallas simuladas (medidas de diseño: móvil 300 px, ordenador 640 px de ancho) ---------- */
+.sb{position:relative;z-index:2;display:flex;justify-content:space-between;align-items:center;height:46px;padding:14px 24px 0 32px;font-size:14px;font-weight:600;color:#111}
+.sb.light{color:#fff}
+.sb.and{height:34px;padding:9px 18px 0 22px;font-size:12.5px;font-weight:500}
+.sb.dk{background:#1E1A19;color:#EDE6E2}
+.sb.navy{background:#14213D;color:#fff}
+.sb-r{display:flex;align-items:center;gap:5px;font-size:11px;font-weight:700}
+.sig{display:inline-flex;align-items:flex-end;gap:1.5px;height:10px}
+.sig i{width:3px;border-radius:1px;background:currentColor}
+.bat{position:relative;width:23px;height:11px;border:1.5px solid currentColor;border-radius:3.5px;opacity:.95}
+.bat::after{content:"";position:absolute;inset:1.5px 5px 1.5px 1.5px;border-radius:1.5px;background:currentColor}
+.hb{position:absolute;z-index:30;left:50%;bottom:7px;width:118px;height:4.5px;margin-left:-59px;border-radius:3px;background:rgba(0,0,0,.85)}
+.hb.l{background:rgba(255,255,255,.9)}
+.grow{flex:1}
+.caret{display:inline-block;width:2px;height:15px;margin-left:1px;vertical-align:-3px;background:#0A7AFF;animation:blink 1s steps(1) infinite}
+.caret.w{background:#EDE6E2}
+.caret.g{background:#1A73E8}
+
+.home{display:flex;flex-direction:column;color:#fff}
+.ios-home{background:linear-gradient(165deg,#173254 0%,#2F5D8C 48%,#8FB5D6 100%)}
+.and-home{background:linear-gradient(172deg,#2A2340 0%,#58466B 52%,#C99A7A 100%)}
+.apps{display:grid;grid-template-columns:repeat(4,1fr);gap:18px 0;padding:22px 16px 0}
+.ic{display:flex;flex-direction:column;align-items:center;gap:5px;border-radius:14px;font-size:10.5px}
+.ic i{position:relative;display:grid;place-items:center;width:56px;height:56px;border-radius:14px;font-style:normal}
+.ic i svg{width:32px;height:32px}
+.ic span{white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,.4)}
+.and-home .ic i{border-radius:50%}
+.and-home .ic i svg{width:28px;height:28px}
+.ic.new i{animation:pop .7s cubic-bezier(.3,1.5,.5,1) .25s backwards}
+.spot{display:flex;align-items:center;gap:5px;align-self:center;margin:auto 0 12px;padding:6px 13px;border-radius:999px;background:rgba(255,255,255,.24);font-size:11.5px;font-weight:600}
+.spot svg{width:12px;height:12px}
+.dock{display:grid;grid-template-columns:repeat(4,1fr);justify-items:center;margin:0 12px 22px;padding:12px 4px;border-radius:32px;background:rgba(255,255,255,.22)}
+.and-home .dock{margin:0 8px 8px;padding:6px 0;background:transparent}
+.clock{padding:16px 22px 6px;font-size:58px;font-weight:300;line-height:1;letter-spacing:-.02em}
+.clock small{display:block;margin-top:8px;font-size:12.5px;font-weight:500;letter-spacing:0}
+.gsearch{display:flex;align-items:center;gap:10px;margin:0 14px 26px;padding:12px 16px;border-radius:999px;background:rgba(255,255,255,.92);color:#444;font-size:13px}
+.gsearch span{flex:1}
+.gsearch svg{width:18px;height:18px}
+.pl{display:block;font-style:normal;background:#14213D url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMAAAADACAYAAABS3GwHAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAokSURBVHhe7d19iB1XGcfx/bP/tfTu0oLCdFFoYqw2tDXJZi43GGkjoSSoLanVskRjUpFYsWKoUlJTGl+qKVLYUtAgBBYVXdFqKiipoqZYaPGlLBQlxoJRQVbxj9S/xnnuPUty7z5n577MnJ05z/eBD4XcMzN3557fvJ6ZTtWhWsnOXWImac+3ZtvHEbfu7+x+8yTpXOO6Qdx1bdK5Tv7w6dn2Uu5caza9lP83A3rSlfy/eb9on20l7SMzSedG13WaWzcknZvkj5E/rP+PBYrlYXhlOmk/1Eo6m1yXakZJp+9+eeWPAsaTLksYan3INJOke+j4qFZ6YTpJD7guV4+aSeZuzb8chzkIRja0chLtuuDGlJzY5l9kUfuCQAh5/zsr55quS4ar3lY/3x0pXwoIK10JujeQY7DWbHpZ/zLABslPkl0Xra7yXc5xdeFALaQLlVwpkuP9fAFyE0tZKFAr56W/uq5bTuUzpfOjSc6XtifIdysnlQUAtSZXKF0XHr/khFebOdAEraR9zHXl0UsudXK1B03XStL9rksPXzIaj+v8iIFsxGVj7rr2cJVPyEkvoiFDJ1zXLi43tkedEdBYw94ok7SoMwAaTB7CKrw0KicM2sRAFNbbC0g62PojbumK93FLSYc+ERCP/FDolOvy/ZWnY1mbAIhLurLmXEAePNYbA/GRx3dd1++V3DLWGgJxShdc1+9V/o/n1zYC4iSXRF3X772/R2sExOz6ZOf2bgDcy6vURkC80pO9AMy2z+oNgJily90AcPkTFsko0dUAyItJ1UZAzLrDH7QPAAu4AgTTpuSNWtoHgAU89A7TGAEK03jVIUwjADCNAMA0AgDTCABMIwAwjQDANAIA0wgATCMAMI0AwDQCANMIAEwjADCNAHhse/cHs913f3QsMq02z1EULX/Ltv3qdBgNAfB47vlfZJPWny+8np359nPZg586kSVb7lSX41O0/M8++jV1OoyGAHiUEYDBevrZxaG33AQgDALgUUUAVmvffUfVZV6NAIRBADyqDIDUhw4dU5e7igCEQQA8qg6A1HqHQwQgDALgUdQB5QRX2lxN/m2UknMCbdmiaPkEoBwEwGPcDihbdfls2PJdHSIAYRAAj0k7oFzHH6Z85wIEIAwC4FFGB5Tr/0Xlmw8BCIMAeJTRAeXwpqhkOdq0BCAMAuBRVgcsKgKwsQiABwGwgQB4hAqAjBXSpiMAYRAAjzI6oIzaLCrffAhAGATAo4wOWDQPKd/QaQIQBgHwmKQDytUfuctbVHLnWJteEIAwCIBHUQeUDj74kIrc1Bqm46/WegPiCEAYBMCjqANOWr6T31UEIAwC4FFlAF586XeFT4gRgDAIgEdVAZD5DvN4JAEIgwB4VBEAGRukLUtDAMIgAB5lBUCu9PBQfH0RAI+iDqg9ECPk5FY6p1zhmeTVJTKv9YoAlIMAeGx0ByQAYRAADwJgAwHwIAA2EAAPAmADAfAgADYQAI+6B0Abi1SkjJf2xoYAeNQ9AOOUzFNblmUEwIMA2EAAPAiADQTAgwDYQAA8CIANBMCDANhAADwe/8qz3Q7jU/R+/0kVLX8cMk9tWZYRAJhGAGAaAYBpBACmEQCYRgBgGgGAaQQAphEAmEYAYBoBgGkEAKYRAJhGAGAaAYBpBACmEQCYRgBgGgGAaQQAphEAmEYAYBoBgGkEAKYRAJhGAGCamQC87V37sn//57/Z4nd/kt07/7Daxrod77k/O33mB9k//vmvbN99R9U2sTETgM+d+Lp7RWyv/vr6peyphTPZ1vY9ansrZMPw8OefzF7700W3ZnolGwqtfWzMBOAPr77mftr++vFPf6m2t+LLT33TrYn+euON/2Vv2rRbnSYmUQXg7ttuz763/61rPH//O7K/f/Ee1QsH9Wms+NG9m9X1In59eLs6zfyOrer6b6KoAiA/zF/m34yKPbLr7er6byICgJERgJoiAGEQgJoiAGEQgJoiAGEQgJoiAGEQgJoiAGEQgJoiAGEQgAb4/g9/5u5p9pfcEdbao8e33mSohNa+6aIMgIxvkVv5WsmYIG0a9MggOF/FOEAuygAMDnxbLQmFhEObBlfIQEGtYhwgF2UAGPg2GUsD5KILwK69B93PtbZ4DmA4spf0lQyd1qZpqugCIA90aCUPeWjtofv5Cy+6NddfL738R7V9U0UVANk9y1NfWsnDL9o00D1w+BG35taWPDmmTdNEjQqAdk0a9XTL5h3qb1g3BACVIAAV0FY06okAVEBb0agnAlABbUWjnghABbQVjXoiABXQVjTqiQBUQFvRqCcCUAHtHTXnH5xT32nztyfe333njTYNRnfxsX3qev79p3er7W++eU79DeumUQHQ+Aa+ybh2rT3Gc+JLz7g1219NHyDX6AAw8C2c9QbIfeIzT6jTNEGjA8DAt7BiHCDX2ACsN/BNxrNr02AyMQ6Qa2wADh097lb92rL+yvOqyEZH9q5aNXW0bWMD8KvzL7tV31/y71p7lOOZb3zHren+kmA08WS4NgG4fcu27K6tdwzlw3felV1e/o3q8Y8fVqdBOT6yd6+63sWjhw6q02jmbtmm9oPQahOAp/dsVm+oIE5yr0DrB6ERAGwIAjCAANhCAAYQAFsIwAACYAsBGEAAbCEAAwiALQRgAAGwhQAM+MAdt3XfO+9z7gsfy1aWvrrGxW89prZHGL998pPq7/LqwjG1/Sr5fzlo/SC0qVbSPqZ9UDe+NxYz8G1j+QbINeVN3FMzSXte+6BuZJyJjDsfHAPEwLeNNThATv5HGvIC3be8871q+7rJ9wA7d2kf1Jl0ehl9GOP76ptI9sLybMae9x1RP6+zPACdTdoHgAVT1yad67QPAAumpFqz6WXtQyB23QBMz6YXtA+B2LkAtM8NfgDEL73QDUBdboYBYaWnuwGYSeZu1RsA8ZpJ0j3dAEhxHgBL5MJPknSucd2/G4CTWkMgRvlh/6Lr+r1q4h1hYFwyBMh1/SuV7xYuaY2BmMjhj9wAdt3+SuUfnNImACKz5Lp8f80knRvZCyB2ctXTdfm1NZ20H9ImAmIgRzmuq+sll4bYCyBGcuwvRzmuq/trOkkPaDMAmqxw6391tWbbr2gzAZpIjmrUKz++uj7ZuV12GdrMgMbJj2pc1x6+OBRCHNKTrkuPXnLcpM8UaAT9mv8olZ8PnFVmDNSanMf2DXgbt3rPDafL2kKAOpKT3huSzk2uC09evbdHMGQaTZCurHu3d9xyb5Dg8UnUlhz2lLrlHyw5psoTtqAtHNhgSyNd65+kGDOEOhnpLm9ZJc9UysmG9oWAMOR4X3m4JVT1Bs/JWyXSFf0LAuWTUQqy1Q92yFNU7lmCU/LFtC8MlCc9XemJ7iQlXyzfIyzqXxyYyFIllzerKNk1ybGZhIG9Aiaw1EraR4Yax1/X6p4nJOl+2XVxroD19I7t8yOIJD1Q/fH91NT/AfGh/UXvjxUYAAAAAElFTkSuQmCC") center/cover no-repeat}
+.safari{background:#fff!important}
+.safari::before{content:"";position:absolute;inset:6px;border-radius:50%;background:radial-gradient(circle,#62C8FF 0%,#1A7CF5 100%)}
+.safari::after{content:"";position:absolute;left:50%;top:50%;width:6px;height:34px;margin:-17px 0 0 -3px;border-radius:3px;background:linear-gradient(#FF3B30 50%,#fff 50%);transform:rotate(45deg)}
+.chrome{background:#fff!important}
+.chrome::before{content:"";position:absolute;inset:4px;border-radius:50%;background:conic-gradient(from -30deg,#EA4335 0 120deg,#FBBC04 0 240deg,#34A853 0)}
+.chrome::after{content:"";position:absolute;left:50%;top:50%;width:21px;height:21px;margin:-10.5px 0 0 -10.5px;border-radius:50%;background:#4285F4;box-shadow:0 0 0 4px #fff}
+
+/* Pantallas de la app */
+.ap{display:flex;flex-direction:column;background:#EEF0F4;color:#10141C}
+.ap-h{display:flex;align-items:center;gap:8px;min-height:50px;padding:0 14px;background:#14213D;color:#fff;font-weight:700;font-size:16px}
+.ap-h .bk{margin-right:2px;font-size:24px;font-weight:400;line-height:1}
+.ap-h .sub{display:block;font-size:11.5px;font-weight:500;opacity:.78}
+.ap-h .mdots{margin-left:auto;font-size:20px}
+.ap-c{flex:1;position:relative;display:flex;flex-direction:column;gap:12px;padding:14px 12px}
+.card{display:flex;flex-direction:column;gap:11px;padding:16px 14px;border-radius:14px;background:#fff;box-shadow:0 1px 3px rgba(16,20,28,.09)}
+.card h3{margin:0;font-size:19px;font-weight:700}
+.card p{margin:0;font-size:12px;line-height:1.42;color:#5B6472}
+.fld{display:flex;flex-direction:column;gap:4px;font-size:11.5px;color:#5B6472}
+.fld b{display:flex;align-items:center;min-height:40px;padding:0 11px;border:1.5px solid #C9CED8;border-radius:9px;background:#fff;color:#10141C;font-size:14px;font-weight:400}
+.fld.focus b{border-color:#1F5FD1;box-shadow:0 0 0 3px rgba(31,95,209,.18)}
+.fld b.pin{justify-content:center;letter-spacing:.45em;font-size:16px}
+.abtn{display:grid;place-items:center;min-height:46px;border-radius:10px;background:#14213D;color:#fff;font-weight:600;font-size:14px}
+.abtn.sec{border:1.5px solid #C9CED8;background:#fff;color:#14213D}
+.alnk{text-align:center;font-size:12px;color:#1F5FD1}
+.aviso{padding:11px 12px;border-radius:10px;background:#FFF4D6;color:#6B4500;font-size:11.5px;line-height:1.4}
+.tipos{display:grid;gap:8px}
+.tipo{display:flex;flex-direction:column;padding:11px 14px;border-radius:12px;color:#fff}
+.tipo b{font-size:18px;letter-spacing:.03em}
+.tipo span{font-size:11px;opacity:.9}
+.vacio{margin:4px 6px;text-align:center;font-size:11.5px;color:#5B6472}
+.ap.wide .ap-c{align-items:center;padding-top:26px}
+.ap.wide .card{width:340px}
+
+/* Safari */
+.saf{display:flex;flex-direction:column;background:#fff}
+.saf-page{flex:1;position:relative;overflow:hidden}
+.dimmed::after{content:"";position:absolute;inset:0;background:rgba(0,0,0,.38)}
+.saf-bar{padding:8px 10px 26px;border-top:1px solid #E3E3E6;background:#F7F7F8}
+.saf-url{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:6px;height:40px;padding:0 12px;border-radius:12px;background:#E6E6EA;font-size:14.5px}
+.saf-url .aa{font-weight:600;font-size:13px}
+.saf-url .host{display:flex;align-items:center;justify-content:center;gap:4px}
+.saf-url svg{width:15px;height:15px}
+.saf-tools{display:flex;justify-content:space-around;padding:10px 4px 0;color:#0A7AFF}
+.saf-tools span{display:grid;place-items:center;width:40px;height:34px;border-radius:9px}
+.saf-tools svg{width:24px;height:24px}
+.saf-tools .off{opacity:.3}
+.fav{padding:16px 16px 0;background:#F2F2F7}
+.fav h5{margin:0 0 12px;font-size:17px;font-weight:700}
+.favs{display:grid;grid-template-columns:repeat(4,1fr);gap:12px 10px;margin-bottom:20px;text-align:center;font-size:10px;color:#666}
+.favs b{display:grid;place-items:center;height:56px;margin-bottom:5px;border-radius:12px;background:#fff;color:#8E8E93;font-size:20px;font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.06)}
+.saf-type{display:flex;align-items:center;gap:10px;padding:8px 10px;background:#F7F7F8;border-top:1px solid #E3E3E6}
+.saf-field{flex:1;min-width:0;display:flex;align-items:center;gap:6px;height:40px;padding:0 10px;border-radius:12px;background:#fff;box-shadow:0 0 0 1px #D9D9DE;font-size:14px;white-space:nowrap;overflow:hidden}
+.saf-field svg{flex:none;width:15px;height:15px;color:#8E8E93}
+.saf-field .clr{margin-left:auto}
+.clr{flex:none;display:grid;place-items:center;width:17px;height:17px;border-radius:50%;background:#B8B8BE;color:#fff;font-size:9px}
+.cancel{color:#0A7AFF;font-size:14px}
+.sheet{position:absolute;left:0;right:0;top:56px;bottom:0;display:flex;flex-direction:column;gap:12px;padding:16px 12px 30px;border-radius:16px 16px 0 0;background:#F2F2F7;animation:up .45s cubic-bezier(.2,.8,.2,1)}
+.sh-head{display:flex;align-items:flex-start;gap:10px;padding:0 2px 12px;border-bottom:1px solid #DCDCE0}
+.sh-head .pl{flex:none;width:44px;height:44px;border-radius:10px}
+.sh-t{flex:1;min-width:0}
+.sh-t b{display:block;font-size:14px}
+.sh-t small{display:block;font-size:11.5px;color:#8A8A90}
+.sh-opt{display:inline-block;margin-top:6px;padding:3px 10px;border-radius:999px;background:#E3E3E8;font-size:11px}
+.sh-x{display:grid;place-items:center;width:26px;height:26px;border-radius:50%;background:#E3E3E8;color:#6B6B70;font-size:11px}
+.sh-apps{display:flex;justify-content:space-between;padding:0 4px;text-align:center;font-size:10px;color:#333}
+.sh-apps i{display:grid;place-items:center;width:52px;height:52px;margin:0 auto 5px;border-radius:13px}
+.sh-apps i svg{width:30px;height:30px}
+.sh-group{overflow:hidden;border-radius:12px;background:#fff}
+.sh-row{display:flex;justify-content:space-between;align-items:center;min-height:42px;padding:0 14px;font-size:14px}
+.sh-row+.sh-row{border-top:1px solid #E5E5EA}
+.sh-row svg{width:21px;height:21px;color:#222}
+.sh-row.hit{border-radius:10px}
+.add{display:flex;flex-direction:column;background:#F2F2F7}
+.add-top{display:flex;justify-content:space-between;align-items:center;gap:6px;padding:8px 14px 16px;font-size:14px}
+.add-top b{font-weight:600}
+.ios-link{padding:4px 6px;border-radius:8px;color:#0A7AFF}
+.add-card{display:flex;align-items:center;gap:12px;margin:0 12px;padding:12px;border-radius:12px;background:#fff}
+.add-card .pl{flex:none;width:58px;height:58px;border-radius:13px}
+.add-f{flex:1;min-width:0}
+.add-name{display:flex;align-items:center;gap:2px;margin-bottom:7px;padding-bottom:7px;border-bottom:1px solid #E5E5EA;font-size:15px}
+.add-name .clr{margin-left:auto}
+.add-f small{display:block;font-size:11.5px;color:#8A8A90;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.add-note{margin:10px 22px 0;font-size:11.5px;line-height:1.4;color:#6D6D72}
+
+/* Teclados */
+.kb{flex:none;display:flex;flex-direction:column;gap:9px;padding:8px 3px 30px;background:#D1D4DA}
+.kr{display:flex;justify-content:center;gap:4px}
+.kb span{flex:0 1 26px;display:grid;place-items:center;height:40px;border-radius:6px;background:#fff;box-shadow:0 1px 0 #8C8F94;color:#111;font-size:17px}
+.kb .w{flex:0 1 38px;background:#ADB2BB;font-size:13px}
+.kb .sp{flex:1 1 auto;font-size:13px}
+.kb .go{flex:0 1 70px;background:#0A7AFF;color:#fff;font-size:14px;font-weight:600}
+.kb.gb{background:#2A2422}
+.kb.gb span{border-radius:9px;background:#47403D;box-shadow:none;color:#EDE6E2}
+.kb.gb .w{background:#5B514D}
+.kb.gb .go{border-radius:999px;background:#F2B8A0;color:#3A1E12}
+.kb.gb .go svg{width:20px;height:20px}
+
+/* Chrome en Android (modo oscuro, como en el móvil de la obra) */
+.cr{display:flex;flex-direction:column;background:#1E1A19;color:#EDE6E2}
+.cr-bar{display:flex;align-items:center;gap:12px;padding:6px 12px 10px}
+.cr-ic{display:grid;place-items:center;width:26px;height:30px;border-radius:8px}
+.cr-ic svg{width:22px;height:22px}
+.cr-url{flex:1;min-width:0;display:flex;align-items:center;gap:7px;height:40px;padding:0 14px;border-radius:999px;background:#38312E;font-size:13.5px;white-space:nowrap;overflow:hidden}
+.cr-url .u{overflow:hidden;text-overflow:ellipsis}
+.cr-url svg{flex:none;width:16px;height:16px}
+.cr-url.focus{background:#2E2826;box-shadow:inset 0 0 0 2px #F2B8A0}
+.cr-tabs{display:grid;place-items:center;flex:none;width:21px;height:21px;border:2px solid currentColor;border-radius:5px;font-size:11px;font-weight:700}
+.cr-page{flex:1;position:relative;overflow:hidden;background:#EEF0F4}
+.cr-sugg{flex:1;padding:4px 0;background:#1E1A19}
+.sg{display:flex;align-items:center;gap:14px;padding:11px 18px;font-size:13.5px}
+.sg svg{flex:none;width:20px;height:20px;color:#BDB3AE}
+.sg small{display:block;font-size:11.5px;color:#BDB3AE}
+.menu{position:absolute;z-index:3;top:4px;right:6px;width:84%;padding:4px 0 8px;border-radius:18px;background:#3A3431;color:#EDE6E2;box-shadow:0 8px 28px rgba(0,0,0,.45);font-size:13.5px;animation:drop .25s ease}
+.m-top{display:flex;justify-content:space-around;padding:8px 6px 8px;border-bottom:1px solid #4E4643}
+.m-top svg{width:20px;height:20px;color:#D9CFCA}
+.mi{display:flex;align-items:center;gap:16px;padding:8px 18px;border-radius:8px}
+.mi svg{flex:none;width:19px;height:19px;color:#D9CFCA}
+.m-sep{height:1px;margin:4px 16px;background:#4E4643}
+.dim{position:absolute;inset:0;z-index:2;background:rgba(0,0,0,.55);animation:fadein .3s}
+.asheet{position:absolute;z-index:3;left:0;right:0;bottom:0;display:flex;flex-direction:column;gap:16px;padding:22px 14px 34px;border-radius:22px 22px 0 0;background:#2B2523;color:#EDE6E2;animation:up .45s cubic-bezier(.2,.8,.2,1)}
+.asheet h4{margin:0;text-align:center;font-size:17px;font-weight:400}
+.aopts{overflow:hidden;border-radius:18px;background:#3A3431}
+.aopt{display:flex;align-items:center;gap:12px;padding:12px 14px;font-size:14px}
+.aopt+.aopt{border-top:1px solid #4E4643}
+.aopt>div{flex:1;min-width:0}
+.aopt small{display:block;margin-top:2px;font-size:11.5px;color:#BDB3AE}
+.aopt .chev{font-size:20px;color:#BDB3AE}
+.bi{position:relative;flex:none;width:40px;height:40px}
+.bi .pl{width:40px;height:40px;border-radius:6px}
+.bi em{position:absolute;right:-5px;bottom:-5px;display:grid;place-items:center;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 0 0 2px #3A3431;font-style:normal;color:#222}
+.bi em svg{width:12px;height:12px}
+.bi em.chr{background:conic-gradient(from -30deg,#EA4335 0 120deg,#FBBC04 0 240deg,#34A853 0)}
+.bi em.chr::after{content:"";width:7px;height:7px;border-radius:50%;background:#4285F4;box-shadow:0 0 0 1.5px #fff}
+
+/* Ordenador (Windows) */
+.pcw{display:flex;flex-direction:column;background:#fff;color:#1F1F1F;font-size:12px}
+.pc-tabs{display:flex;align-items:flex-end;gap:6px;height:36px;padding:0 0 0 10px;background:#DDE3EA}
+.pc-tab{display:flex;align-items:center;gap:8px;width:200px;height:29px;padding:0 12px;border-radius:9px 9px 0 0;background:#fff;font-size:12px;white-space:nowrap}
+.pc-tab .pl{flex:none;width:14px;height:14px;border-radius:3px}
+.pc-tab .x{margin-left:auto;color:#666;font-size:10px}
+.pc-plus{align-self:center;padding:0 6px;font-size:16px;color:#444}
+.win-ctl{display:flex;align-self:stretch;margin-left:auto;color:#333;font-size:12px}
+.win-ctl span{display:grid;place-items:center;width:44px}
+.pc-bar{display:flex;align-items:center;gap:14px;height:42px;padding:0 12px;border-bottom:1px solid #E3E5E8;color:#444}
+.pc-bar>svg{flex:none;width:16px;height:16px}
+.pc-url{position:relative;flex:1;min-width:0;display:flex;align-items:center;gap:8px;height:32px;padding:0 6px 0 14px;border-radius:999px;background:#EEF1F4;font-size:13px}
+.pc-url .u{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pc-url svg{flex:none;width:15px;height:15px}
+.pc-url.focus{background:#fff;box-shadow:0 0 0 2px #1A73E8}
+.pc-inst{display:grid;place-items:center;width:26px;height:26px;border-radius:50%}
+.pc-inst svg{width:17px;height:17px}
+.pc-page{flex:1;position:relative;overflow:hidden;background:#EEF0F4}
+.ntp{display:grid;place-items:center;height:100%;background:#fff}
+.ntp div{width:340px;padding:12px 18px;border-radius:999px;background:#EEF1F4;color:#777;font-size:13px}
+.omni{position:absolute;z-index:3;left:90px;right:44px;top:72px;padding:6px 0;border-radius:0 0 14px 14px;background:#fff;box-shadow:0 8px 22px rgba(0,0,0,.18);animation:fadein .25s}
+.omni .sg{color:#1F1F1F;padding:8px 18px;font-size:13px}
+.omni .sg svg{color:#666;width:16px;height:16px}
+.omni .sg.hit{border-radius:6px}
+.pop{position:absolute;z-index:3;top:6px;right:58px;display:flex;flex-direction:column;gap:14px;width:290px;padding:18px;border-radius:12px;background:#fff;box-shadow:0 10px 30px rgba(0,0,0,.25);animation:drop .3s ease}
+.pop h4{margin:0;font-size:15px;font-weight:500}
+.pop .who{display:flex;align-items:center;gap:12px}
+.pop .who .pl{width:38px;height:38px;border-radius:9px}
+.pop .who small{display:block;font-size:11.5px;color:#666}
+.pop .acts{display:flex;justify-content:flex-end;gap:8px}
+.gbtn{padding:7px 18px;border:1px solid #C7CDD4;border-radius:999px;color:#1A73E8;font-size:12.5px;font-weight:600}
+.gbtn.fill{border-color:#1A73E8;background:#1A73E8;color:#fff}
+.desk{background:radial-gradient(120% 120% at 70% 20%,#5F86B3 0%,#2C4A72 45%,#16243C 100%)}
+.shortcut{position:absolute;left:16px;top:16px;display:flex;flex-direction:column;align-items:center;gap:4px;width:70px;padding:5px 2px;border-radius:6px;color:#fff;font-size:11px;text-shadow:0 1px 2px rgba(0,0,0,.6)}
+.shortcut .pl{width:40px;height:40px;border-radius:9px}
+.appwin{position:absolute;left:120px;right:40px;top:26px;bottom:62px;display:flex;flex-direction:column;overflow:hidden;border-radius:9px;background:#fff;box-shadow:0 16px 40px rgba(0,0,0,.5);animation:pop .5s cubic-bezier(.2,.9,.3,1.1)}
+.tb{display:flex;align-items:center;gap:8px;height:32px;padding-left:10px;background:#14213D;color:#fff;font-size:12px;font-weight:600}
+.tb .pl{width:16px;height:16px;border-radius:4px}
+.tb .win-ctl{color:#fff}
+.appwin .ap{flex:1;position:relative}
+.appwin .ap-h{display:none}
+.taskbar{position:absolute;left:0;right:0;bottom:0;display:flex;justify-content:center;align-items:center;gap:8px;height:44px;background:rgba(232,236,242,.88)}
+.taskbar span,.taskbar .pl{width:28px;height:28px;border-radius:6px}
+.taskbar span{background:rgba(20,33,61,.18)}
+.taskbar .win{background:conic-gradient(#0F6CBD 0 25%,#2B88D8 0 50%,#0F6CBD 0 75%,#2B88D8 0);clip-path:inset(4px round 2px)}
+.taskbar .pl{box-shadow:0 3px 0 -1px #E2661B}
+
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition:none!important}
+  .prog .on i{animation:none!important;width:0}
+}
+
+/* ====== Tutorial del parte: pantallas de la app (colores fijos de la app, claros) ====== */
+.hero-in.t2{grid-template-columns:minmax(0,1fr) auto;align-items:center}
+.hero-in.t2 .lede{grid-column:1}
+.back{grid-column:2;grid-row:1/span 2;display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 16px;border:1px solid rgba(255,255,255,.35);border-radius:12px;background:rgba(255,255,255,.08);color:#fff;font-weight:600;font-size:14.5px;text-decoration:none;white-space:nowrap}
+.back:hover{background:rgba(255,255,255,.16)}
+.tabs.t2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.tab.infra .n{background:#C2410C;color:#fff}
+.tab.super .n{background:#1D4ED8;color:#fff}
+.tab[aria-selected="true"].infra{background:#C2410C;border-color:#C2410C;color:#fff}
+.tab[aria-selected="true"].super{background:#1D4ED8;border-color:#1D4ED8;color:#fff}
+.tab[aria-selected="true"] .n{background:rgba(255,255,255,.95);color:#14213D}
+.tab[aria-selected="true"] small{opacity:.85}
+.tag{display:inline-block;margin-left:8px;padding:2px 9px;border-radius:999px;background:var(--sunken);color:var(--muted);font-family:var(--f-body);font-size:12px;font-weight:600;letter-spacing:.02em;vertical-align:middle}
+.tag.only{background:#1D4ED8;color:#fff}
+.sb.infra{background:#C2410C;color:#fff}
+.sb.super{background:#1D4ED8;color:#fff}
+.sb.navy{background:#14213D;color:#fff}
+.sb.maq{background:#4D7C0F;color:#fff}
+
+.a-app{display:flex;flex-direction:column;height:100%;background:#EEF0F4;color:#10141C;font-size:12.5px;line-height:1.35;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.a-bar{display:flex;align-items:center;gap:8px;min-height:46px;padding:0 10px;color:#fff;font-weight:700;font-size:14px}
+.a-bar.infra{background:#C2410C}.a-bar.super{background:#1D4ED8}.a-bar.navy{background:#14213D}
+.a-back{flex:none;display:grid;place-items:center;min-height:32px;padding:0 9px;border-radius:8px;background:rgba(255,255,255,.16);font-size:12px;font-weight:600;white-space:nowrap}
+.a-title{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.a-title small{display:block;font-size:10.5px;font-weight:500;color:inherit;opacity:.85}
+.a-sv{flex:none;font-size:10px;font-weight:400;opacity:.9}
+.a-mdots{flex:none;font-size:20px;line-height:1;padding:0 4px}
+.a-body{position:relative;flex:1;min-height:0;overflow:hidden;padding:10px 10px 0}
+.a-body.pie{padding-bottom:0}
+.a-card{padding:12px;margin-bottom:10px;border:1px solid #C9CED8;border-radius:11px;background:#fff;box-shadow:0 1px 2px rgba(16,20,28,.08)}
+.a-card.ok{background:#E3F5E9}.a-card.pend{background:#FFF4D6}
+.a-card.cop{border:1.5px dashed #1F5FD1}
+.a-card h2{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin:0 0 6px;font-size:14px}
+.a-card p{margin:0 0 6px}
+.a-oblig{font-size:8.5px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:#B42318}
+.a-cnt{padding:0 8px;border:1px solid #C9CED8;border-radius:999px;background:#F6F7F9;font-size:11px;font-weight:400}
+.a-nota{margin:0 0 6px;font-size:11px;color:#5B6472}
+.a-nota b,.a-nota strong{color:#10141C}
+.a-lab{display:block;margin:9px 0 3px;font-size:11px;font-weight:600}
+.a-lab small{font-weight:400;color:#5B6472}
+.a-in{display:flex;align-items:center;min-height:38px;padding:0 10px;border:1.5px solid #C9CED8;border-radius:8px;background:#fff;font-size:12.5px;white-space:nowrap;overflow:hidden}
+.a-in.focus{border-color:#1F5FD1;box-shadow:0 0 0 3px rgba(31,95,209,.2)}
+.a-in.sel::after{content:"⌄";margin-left:auto;padding-left:8px;color:#5B6472}
+.a-in.hold{color:#7B8494}
+.a-in.fixed{background:#F6F7F9;font-weight:600}
+.a-in.ta{min-height:52px;align-items:flex-start;padding-top:8px;white-space:normal}
+.a-in .caret{height:13px;background:#1F5FD1}
+.a-seg{display:flex;gap:5px;margin-top:3px}
+.a-seg span{flex:1 1 0;display:flex;align-items:center;justify-content:center;min-height:38px;padding:3px 5px;border:1.5px solid #C9CED8;border-radius:8px;background:#fff;font-size:12px;font-weight:600;text-align:center}
+.a-seg span.on{border-color:#1F5FD1;background:#1F5FD1;color:#fff}
+.a-seg.sm span{font-size:12px}
+.a-chk{display:flex;align-items:center;gap:9px;min-height:32px;margin-top:8px}
+.a-chk i{flex:none;display:grid;place-items:center;width:19px;height:19px;border:1.5px solid #8A93A3;border-radius:5px;background:#fff;color:#fff;font-size:12px;font-style:normal;line-height:1}
+.a-chk.on i{border-color:#1F5FD1;background:#1F5FD1}
+.a-chk small{color:#5B6472;font-size:10.5px}
+.a-chk span{min-width:0}
+.a-btn{display:flex;align-items:center;justify-content:center;min-height:40px;margin-top:8px;padding:6px 10px;border:1.5px solid #C9CED8;border-radius:10px;background:#fff;font-size:12.5px;font-weight:600;text-align:center}
+.a-btn.sec{background:#F6F7F9}
+.a-btn.pri{border-color:#1F5FD1;background:#1F5FD1;color:#fff}
+.a-btn.big{min-height:46px;font-size:14px}
+.a-btn.add{min-height:46px;border:2px dashed #1F5FD1;background:transparent;color:#1F5FD1}
+.a-btn.link{border:0;background:none;color:#1F5FD1;text-decoration:underline}
+.a-btn.danger{border:0;background:none;color:#B42318}
+.a-btn.off{opacity:.5}
+.a-row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.a-pk{display:flex;align-items:center;gap:5px}
+.a-pk .a-in{flex:1;min-width:0;justify-content:center}
+.a-pk b{font-size:15px}
+.a-pie{position:absolute;left:0;right:0;bottom:0;z-index:4;display:flex;gap:8px;padding:8px 10px 24px;border-top:1px solid #C9CED8;background:#fff}
+.a-pie .a-btn{flex:1;margin:0}
+.a-aviso{margin-bottom:10px;padding:9px 11px;border-radius:10px;background:#FFF4D6;color:#6B4500;font-size:11.5px;font-weight:600}
+.a-aviso.fila{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.a-aviso.fila .a-btn{flex:none;width:auto;min-height:32px;margin:0;padding:4px 11px}
+.a-tipos{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:6px}
+.a-tipo{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:92px;border-radius:14px;color:#fff;font-size:11.5px;font-weight:600;box-shadow:0 1px 2px rgba(16,20,28,.12)}
+.a-tipo b{font-size:23px;font-weight:800;letter-spacing:.04em}
+.a-tipo.i{background:#C2410C}.a-tipo.s{background:#1D4ED8}
+.a-tipo.m{grid-column:1/-1;min-height:64px;background:#4D7C0F}.a-tipo.m b{font-size:17px}
+.a-grp{margin:12px 3px 6px;font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:#5B6472}
+.a-item{display:flex;align-items:center;gap:9px;margin-bottom:8px;padding:9px 11px;border:1.5px solid #C9CED8;border-radius:10px;background:#fff;font-size:12px}
+.a-item.cerrado{border-color:#C2410C;background:#FFF4D6}
+.a-item.okb{border-color:#157A3A}
+.a-item .inf{flex:1;min-width:0}
+.a-item small{color:#5B6472;font-size:10.5px}
+.a-item .fl{font-size:18px;color:#5B6472}
+.a-eti{flex:none;padding:5px 6px;border-radius:6px;color:#fff;font-size:10px;font-weight:800}
+.a-eti.i{background:#C2410C}.a-eti.s{background:#1D4ED8}
+.a-num{flex:none;display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:#157A3A;color:#fff;font-weight:700;font-size:13px}
+.a-listo{color:#157A3A;font-weight:600}
+.a-falta{color:#B42318;font-weight:600}
+.a-per{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 0;border-bottom:1px solid #E1E4EA;font-size:12px}
+.a-per small{display:block;color:#5B6472;font-size:10.5px}
+.a-x{flex:none;display:grid;place-items:center;width:32px;height:32px;border:1.5px solid #C9CED8;border-radius:8px;background:#F6F7F9;color:#B42318;font-size:12px}
+.a-res{display:flex;flex-direction:column;margin-top:6px;padding:8px 10px;border:1.5px dashed #C9CED8;border-radius:9px;background:#F6F7F9;font-size:12px}
+.a-res small{color:#5B6472;font-size:10.5px}
+.a-fase{margin-top:9px;padding-top:9px;border-top:1px solid #E1E4EA}
+.a-fcab{display:flex;align-items:center;gap:7px;font-size:12.5px}
+.a-fbtn{display:flex;gap:8px}
+.a-fbtn .a-btn{flex:1;margin:6px 0 0}
+.a-thumbs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px}
+.a-th{position:relative;aspect-ratio:1;overflow:hidden;border:1.5px solid #C9CED8;border-radius:8px;background:linear-gradient(180deg,#9DB3C7 0 46%,#6E6A5E 46% 62%,#4E4B44 62%)}
+.a-th::before{content:"";position:absolute;left:-10%;right:-10%;top:52%;height:2px;background:#C9C4B5;box-shadow:0 7px 0 #C9C4B5,0 14px 0 #C9C4B5}
+.a-th.b{background:linear-gradient(180deg,#B7C6D3 0 40%,#7C7869 40% 58%,#575348 58%)}
+.a-th.c{background:linear-gradient(180deg,#8FA6BD 0 50%,#625E52 50%)}
+.a-th i{position:absolute;left:3px;bottom:3px;padding:1px 4px;border-radius:3px;background:rgba(0,0,0,.6);color:#fff;font-size:7.5px;font-style:normal}
+.a-dim{position:absolute;inset:0;z-index:5;background:rgba(0,0,0,.55);animation:fadein .3s}
+.a-sheet{position:absolute;z-index:6;left:0;right:0;bottom:0;padding:14px 12px 24px;border-radius:16px 16px 0 0;background:#fff;animation:up .4s cubic-bezier(.2,.8,.2,1)}
+.a-sheet h2{margin:0 0 6px;font-size:15px}
+.a-sheet .a-btn:first-of-type{margin-top:10px}
+.a-err{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid #E1E4EA;font-size:12px}
+.a-err .a-btn{flex:none;width:auto;min-height:32px;margin:0;padding:4px 14px}
+.a-dlg{position:absolute;z-index:7;left:22px;right:22px;top:36%;padding:20px 18px 12px;border-radius:24px;background:#F4EFF4;color:#1D1B20;box-shadow:0 8px 30px rgba(0,0,0,.4);animation:pop .3s}
+.a-dlg p{margin:0 0 14px;font-size:13px;line-height:1.4}
+.a-dlg .acts{display:flex;justify-content:flex-end;gap:6px;font-size:13px;font-weight:600;color:#6750A4}
+.a-dlg .acts span{padding:8px 12px;border-radius:999px}
+.a-toast{position:absolute;z-index:8;left:14px;right:14px;bottom:70px;padding:10px 13px;border-radius:11px;background:#10141C;color:#fff;font-size:12px;font-weight:600;box-shadow:0 6px 24px rgba(0,0,0,.3);animation:up .4s}
+.a-app .hit{outline-offset:1px}
+.a-app .a-chk.hit{outline-offset:3px;border-radius:8px}
+@media (max-width:860px){
+  .hero-in.t2{grid-template-columns:minmax(0,1fr);gap:12px}
+  .hero-in.t2 .lede{font-size:14.5px}
+  .back{grid-column:1;grid-row:auto;justify-self:start;min-height:40px;padding:0 14px;font-size:14px}
+}
+.a-vacio{margin:14px 0;text-align:center;font-size:12px;color:#5B6472}
+/* Respuesta al toque: el botón se hunde; lo que aparece nuevo entra con un pequeño destello */
+.a-app .hit{transition:transform .14s ease,filter .14s ease}
+.a-app .pressed{transform:scale(.95);filter:brightness(.86)}
+.a-new{animation:nuevo .9s ease}
+@keyframes nuevo{0%{background:#DCEBFF}100%{background:transparent}}
+.prog span.ch{margin-left:10px}
+.steps .chh{padding:14px 2px 4px;font-family:var(--f-display);font-size:13px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--accent-text)}
+.steps .chh:first-child{padding-top:6px}
+.now p{min-height:3em}
+@media (max-width:860px){.now p{min-height:2.9em}}
+/* Pantalla larga que baja como en la app */
+.a-scroll{position:relative;will-change:transform}
+.a-scroll.con-pie{padding-bottom:84px}
+.sin-fundido{animation:none!important}
+.a-eti.m{background:#4D7C0F}
+.a-bar.maq{background:#4D7C0F}
+.a-h3{margin:10px 0 0;font-size:13px}
+.a-btn small{margin-left:4px;font-weight:400;color:#5B6472}
+.a-sub{margin-top:6px;padding:10px;border:1px solid #C9CED8;border-radius:10px;background:#F6F7F9}
+.a-op{margin-top:10px;padding-top:2px;border-top:1px solid #C9CED8}
+.a-seg5 span{padding:3px 0;font-size:11px}
+
+/* ====== Guía completa: tres etapas y selector dentro de cada una ====== */
+.tabs.t3{grid-template-columns:repeat(3,minmax(0,1fr));margin-bottom:10px}
+.subtabs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px}
+.chip{display:flex;align-items:baseline;gap:7px;min-height:42px;padding:0 16px;border:1.5px solid var(--line);border-radius:999px;background:var(--surface);font-size:15px;font-weight:600}
+.chip small{font-size:12.5px;font-weight:500;color:var(--muted)}
+.chip:hover{border-color:var(--accent)}
+.chip[aria-selected="true"]{border-color:var(--fg);background:var(--fg);color:var(--bg)}
+.chip[aria-selected="true"] small{color:inherit;opacity:.7}
+.chip.infra[aria-selected="true"]{border-color:#C2410C;background:#C2410C;color:#fff}
+.chip.super[aria-selected="true"]{border-color:#1D4ED8;background:#1D4ED8;color:#fff}
+.faq-g{margin:22px 0 10px;font-family:var(--f-display);font-size:19px;font-weight:700;letter-spacing:.02em;color:var(--accent-text)}
+.faq-g:first-of-type{margin-top:6px}
+.urlbox .lbl svg{width:17px;height:17px;flex:none}
+@media (max-width:860px){
+  .tabs.t3{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+  .tabs.t3 .tab{align-items:center;padding:8px 4px 9px;text-align:center}
+  .tabs.t3 .tab .n{position:static;margin:0 0 3px}
+  .tabs.t3 .tab small{display:none}
+  .tabs.t3 .tab b{font-size:17px;line-height:1.05}
+  .subtabs{gap:6px;margin-bottom:14px}
+  .chip{min-height:38px;padding:0 12px;font-size:14px}
+  .chip small{display:none}
+}
+.gp-tabs.t3{grid-template-columns:repeat(3,1fr)}
+.gp-tabs.t3 span{text-align:center;font-weight:700;color:#B5500F}
+.pcw .gp-tabs.t3{grid-template-columns:repeat(3,1fr)}
+.chip.maq[aria-selected="true"]{border-color:#4D7C0F;background:#4D7C0F;color:#fff}
+</style>
+</head>
+<body>
+
+<header class="hero"><div class="wrap hero-in">
+  <div class="brand">
+    <i class="pl" role="img" aria-label="Icono de Partes LAV"></i>
+    <div>
+      <p class="eyebrow">Partes LAV · UTE LAV Este</p>
+      <h1>Instala la app y haz tu primer parte</h1>
+    </div>
+  </div>
+  <p class="lede">Tres pasos, cada uno con su animación: instala la app, regístrate y aprende a rellenar un parte. Ten a mano tu correo de Gmail.</p>
+  <div class="urlbox">
+    <span class="lbl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg>Dirección de la app: cópiala para instalarla</span>
+    <div class="url-row"><code id="u">mant-ute-lav-este.github.io/partes-lav</code><button class="copy" id="copy" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="11.5" height="12.5" rx="2"/><path d="M15.5 8V5.5A1.5 1.5 0 0 0 14 4H6a1.5 1.5 0 0 0-1.5 1.5V15A1.5 1.5 0 0 0 6 16.5h2"/></svg><span id="copytxt">Copiar</span></button></div>
+    <span class="hint">Luego la pegarás en el navegador, como se ve en la animación.</span>
+  </div>
+</div></header>
+
+<main class="wrap">
+  <div class="tabs t3" id="tabs" role="tablist" aria-label="Qué quieres hacer"></div>
+  <div class="subtabs" id="subtabs" role="tablist" aria-label="Elige"></div>
+
+  <section class="player" id="player" aria-label="Animación paso a paso">
+    <div class="stage">
+      <div class="device phone" id="device">
+        <div class="scr" id="scr">
+          <div id="zoom"><div id="screen"></div><div class="tap" id="tap" hidden></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="side">
+      <div class="prog" id="prog" aria-hidden="true"></div>
+      <div class="now" aria-live="polite">
+        <span class="count" id="count"></span>
+        <h2 id="stitle"></h2>
+        <p id="sdesc"></p>
+      </div>
+      <div class="ctrl">
+        <button class="cbtn" id="prev" type="button"><svg viewBox="0 0 24 24"><path d="M15 5 8 12l7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Atrás</button>
+        <button class="cbtn primary" id="play" type="button"></button>
+        <button class="cbtn" id="next" type="button">Siguiente<svg viewBox="0 0 24 24"><path d="m9 5 7 7-7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      </div>
+      <button class="nextguide" id="nextguide" type="button" hidden>Siguiente<svg viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <ol class="steps" id="steps"></ol>
+    </div>
+  </section>
+
+  <section class="help">
+    <h2>Si algo no sale</h2>
+    <p>Toca una pregunta para ver la respuesta.</p>
+    <h3 class="faq-g">Instalar y registrarse</h3>
+    <div class="faq">
+      <details><summary>En iPhone no veo «Compartir»</summary><p>En las versiones nuevas de iOS está dentro de los tres puntos (···), junto a la barra de direcciones. Tócalos y luego «Compartir».</p></details>
+      <details><summary>En Android no sale «Instalar y crear acceso directo»</summary><p>Baja hasta el final del menú ⋮. Según el móvil se llama «Instalar aplicación» o «Añadir a pantalla de inicio». Si no aparece ninguna, recarga la página y espera unos segundos.</p></details>
+      <details><summary>En el ordenador no veo el icono de instalar</summary><p>En Chrome: menú ⋮ → Enviar, guardar y compartir → Instalar página como aplicación. En Edge: menú ··· → Aplicaciones → Instalar este sitio como aplicación.</p></details>
+      <details><summary>Me salen dos iconos de Partes LAV</summary><p>Seguramente se pulsó también «Crear acceso directo» o se instaló dos veces. Deja pulsado uno de los dos iconos y quítalo; con uno basta.</p></details>
+      <details><summary>No me llega el código</summary><p>Mira en «Spam» y en «Promociones» de Gmail. Si tampoco está, pulsa «No me ha llegado: enviar otro».</p></details>
+      <details><summary>No me encuentra al poner mi nombre</summary><p>Prueba con tu nombre y un solo apellido. Si sigue sin encontrarte, avisa a la oficina para que te den de alta.</p></details>
+      <details><summary>He olvidado el PIN</summary><p>Pulsa «He olvidado el PIN» en la pantalla de entrada. Te llega un código a tu Gmail y creas uno nuevo.</p></details>
+      <details><summary>¿Hay que actualizar la app?</summary><p>No hace falta reinstalarla. Cuando hay versión nueva basta con cerrarla del todo y volver a abrirla con conexión.</p></details>
+    </div>
+    <h3 class="faq-g">Hacer un parte</h3>
+    <div class="faq">
+      <details><summary>No me deja cerrar el parte</summary><p>Sale la lista «Falta por completar» con lo que falta. Toca «Ir» para saltar al trabajo, arréglalo y vuelve a pulsar «Cerrar parte».</p></details>
+      <details><summary>Una persona no está en la lista</summary><p>En «Personal», pulsa «+ Añadir a alguien que no está en la lista», escribe al menos el nombre y pulsa «Añadir». Queda guardada para los próximos partes.</p></details>
+      <details><summary>Me avisa de que el parte pesa demasiado</summary><p>El correo admite unos 20 MB. La app te dice cuántas fotos quitar. Si lo cierras igualmente, puede que no llegue a la oficina.</p></details>
+      <details><summary>Una foto no se puede usar</summary><p>Hazla con la cámara de la app (botón «Cámara»). Las fotos de formato HEIC piden cobertura la primera vez para convertirlas.</p></details>
+      <details><summary>No tengo cobertura</summary><p>Rellena y cierra el parte con normalidad y pulsa «Enviar a la oficina». Queda «En cola» y sale solo cuando vuelva la señal, aunque cierres la app. En el inicio verás «Tienes 1 parte sin enviar».</p></details>
+      <details><summary>Lleva más de 12 horas sin llegar</summary><p>Abre el parte: aparece el botón «Enviar por Gmail (emergencia)». Úsalo solo en ese caso.</p></details>
+      <details><summary>Me he equivocado en un parte ya cerrado o enviado</summary><p>Ábrelo y pulsa «Corregir el parte». Se crea una copia para editar (revisión 2) y la oficina guarda las dos versiones.</p></details>
+      <details><summary>Hice un parte de prueba o está repetido</summary><p>Si aún no se ha enviado, ábrelo y pulsa «Descartar este parte». No llegará a la oficina. Los borradores se borran con la papelera de la lista.</p></details>
+      <details><summary>En el parte de maquinaria no me sale «Registros DRP»</summary><p>Solo sale cuando la máquina es una bateadora o el trabajo es «Bateo». Es opcional: si no hay archivos, no hace falta.</p></details>
+    </div>
+  </section>
+
+  <p class="foot">Partes LAV · Mantenimiento UTE LAV Este. Dirección de la app: <a href="https://mant-ute-lav-este.github.io/partes-lav/">mant-ute-lav-este.github.io/partes-lav</a> · Los nombres y datos de las pantallas son de ejemplo.</p>
+</main>
+
+<script>
+const URL_APP='mant-ute-lav-este.github.io/partes-lav';
+const HOST='mant-ute-lav-este.github.io';
+const DUR=5200, DUR_TYPE=7200;
+const DW={phone:300,pc:640};
+
+const svg=(p,f)=>`<svg viewBox="0 0 24 24"${f?'':' fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"'}>${p}</svg>`;
+const SV={
+  back:svg('<path d="M15 4.5 7.5 12l7.5 7.5" stroke-width="2.2"/>'),
+  fwd:svg('<path d="m9 4.5 7.5 7.5L9 19.5" stroke-width="2.2"/>'),
+  share:svg('<path d="M12 3.2v11.6M8 7.2l4-4 4 4M8.2 10H6.5A1.5 1.5 0 0 0 5 11.5v8A1.5 1.5 0 0 0 6.5 21h11a1.5 1.5 0 0 0 1.5-1.5v-8a1.5 1.5 0 0 0-1.5-1.5h-1.7"/>'),
+  book:svg('<path d="M12 6.5C10 5 6.8 4.6 4 5v13.5c2.8-.4 6 0 8 1.5 2-1.5 5.2-1.9 8-1.5V5c-2.8-.4-6 0-8 1.5Zm0 0V20"/>'),
+  tabs:svg('<rect x="4" y="8" width="12" height="12" rx="2.2"/><path d="M8 5.5h9.5A2.5 2.5 0 0 1 20 8v9.5"/>'),
+  lock:svg('<rect x="6" y="10.5" width="12" height="9.5" rx="2" fill="currentColor" stroke="none"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5" fill="none" stroke="currentColor" stroke-width="2"/>',1),
+  reload:svg('<path d="M19 12a7 7 0 1 1-2.1-5M17.5 3.5v4h-4"/>'),
+  search:svg('<circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 5 5"/>'),
+  mic:svg('<rect x="9" y="3.5" width="6" height="11" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v2.5"/>'),
+  globe:svg('<circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.5 2.6 3.6 5.4 3.6 8.5s-1.1 5.9-3.6 8.5c-2.5-2.6-3.6-5.4-3.6-8.5S9.5 6.1 12 3.5Z"/>'),
+  print:svg('<path d="M7 9V4h10v5M7 17H5a1.5 1.5 0 0 1-1.5-1.5v-5A1.5 1.5 0 0 1 5 9h14a1.5 1.5 0 0 1 1.5 1.5v5A1.5 1.5 0 0 1 19 17h-2M7 14h10v6H7Z"/>'),
+  copy:svg('<rect x="8" y="8" width="11.5" height="12.5" rx="2"/><path d="M15.5 8V5.5A1.5 1.5 0 0 0 14 4H6a1.5 1.5 0 0 0-1.5 1.5V15A1.5 1.5 0 0 0 6 16.5h2"/>'),
+  plusSq:svg('<rect x="4" y="4" width="16" height="16" rx="3.5"/><path d="M12 8.5v7M8.5 12h7"/>'),
+  star:svg('<path d="m12 4 2.4 5 5.4.6-4 3.7 1.1 5.4L12 16l-4.9 2.7 1.1-5.4-4-3.7 5.4-.6Z"/>'),
+  glasses:svg('<circle cx="7" cy="13" r="3.4"/><circle cx="17" cy="13" r="3.4"/><path d="M10.4 13h3.2"/>'),
+  home:svg('<path d="M4 11 12 4l8 7v8.5a1 1 0 0 1-1 1h-4.5v-6h-5v6H5a1 1 0 0 1-1-1Z"/>'),
+  tune:svg('<circle cx="7" cy="8" r="2.3"/><path d="M11 8h9M4 16h9"/><circle cx="17" cy="16" r="2.3"/>'),
+  plus:svg('<path d="M12 5v14M5 12h14" stroke-width="2.2"/>'),
+  dots:svg('<circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/>',1).replace('<svg ','<svg fill="currentColor" '),
+  arrowR:svg('<path d="M5 12h13M13 6l6 6-6 6" stroke-width="2.4"/>'),
+  install:svg('<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 7v6M9.5 10.5 12 13l2.5-2.5"/>'),
+  down:svg('<path d="M12 5v13M6.5 12.5 12 18l5.5-5.5" stroke-width="2.6"/>'),
+  newtab:svg('<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M12 8.5v7M8.5 12h7"/>'),
+  incog:svg('<path d="M3.5 11h17M6.5 11l1.7-5.5h7.6L17.5 11"/><circle cx="7.5" cy="16" r="2.6"/><circle cx="16.5" cy="16" r="2.6"/><path d="M10.1 16h3.8"/>'),
+  group:svg('<rect x="4" y="4" width="6.5" height="6.5" rx="1"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1"/><path d="m16.8 3.8 3.4 3.4-3.4 3.4-3.4-3.4Z"/>'),
+  hist:svg('<path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3M4.5 4.5v3h3M12 8v4l2.6 1.6"/>'),
+  trash:svg('<path d="M5 7h14M9.5 7V4.5h5V7M7 7l.8 12.5h8.4L17 7"/>'),
+  site:svg('<circle cx="7" cy="7" r="2.3"/><path d="M11 7h9M4 16h9"/><circle cx="17" cy="16" r="2.3"/>'),
+  dl:svg('<path d="M5 19.5h14M7 11l3.5 3.5L17 8"/>'),
+  starF:svg('<path d="m12 4 2.4 5 5.4.6-4 3.7 1.1 5.4L12 16l-4.9 2.7 1.1-5.4-4-3.7 5.4-.6Z" fill="currentColor"/>'),
+  devices:svg('<rect x="3" y="5" width="13" height="10" rx="1.2"/><path d="M2 18.5h11M17 9h4v10h-4Z"/>'),
+  shareA:svg('<circle cx="17.5" cy="5.5" r="2.4"/><circle cx="6.5" cy="12" r="2.4"/><circle cx="17.5" cy="18.5" r="2.4"/><path d="m8.6 10.8 6.8-4M8.6 13.2l6.8 4"/>'),
+  find:svg('<rect x="5" y="3.5" width="14" height="17" rx="2"/><circle cx="11.5" cy="12" r="3"/><path d="m13.8 14.3 2.4 2.4"/>'),
+  transl:svg('<path d="M4 6h8M8 4v2c0 4-2 7-4.5 8.5M6 10c1 2 3 3.5 5 4M13 20l3.5-9 3.5 9M14.2 17h4.6"/>'),
+  reader:svg('<rect x="5" y="3.5" width="14" height="17" rx="2"/><path d="M8.5 8h7M8.5 12h7M8.5 16h4"/>'),
+  info:svg('<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5M12 7.6v.4"/>'),
+  winmin:'—', winmax:'☐', winx:'✕'
+};
+const G={
+  phone:svg('<path fill="#fff" stroke="none" d="M7 3.6 9.3 3.3l1.5 3.9-2 1.4a11 11 0 0 0 6.6 6.6l1.4-2 3.9 1.5-.3 2.3a2.4 2.4 0 0 1-2.6 2C10.6 18.6 5.4 13.4 5 6.2a2.4 2.4 0 0 1 2-2.6Z"/>'),
+  chat:svg('<path fill="#fff" stroke="none" d="M12 4.2c4.6 0 8.3 3 8.3 6.7s-3.7 6.6-8.3 6.6c-.9 0-1.8-.1-2.6-.3L5 19.3l1.1-3.3C4.6 14.8 3.7 13 3.7 10.9 3.7 7.2 7.4 4.2 12 4.2Z"/>'),
+  mail:svg('<rect x="3" y="6" width="18" height="12.5" rx="2" fill="#fff" stroke="none"/><path d="m3.6 7 8.4 6.2L20.4 7" stroke="#1C6EF2" stroke-width="1.6"/>'),
+  camera:svg('<path fill="#fff" stroke="none" d="M8.6 5h6.8l1.3 2H19a2 2 0 0 1 2 2v8.5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h2.3Z"/><circle cx="12" cy="13" r="3.6" fill="#55585E" stroke="none"/>'),
+  gear:svg('<circle cx="12" cy="12" r="6.6" stroke="#fff" stroke-width="3.2" stroke-dasharray="2.6 1.9" stroke-linecap="butt"/><circle cx="12" cy="12" r="3.2" stroke="#fff" stroke-width="1.8"/>'),
+  clock:svg('<circle cx="12" cy="12" r="8.5" fill="#fff" stroke="none"/><path d="M12 6.8V12l3.4 2.1" stroke="#111" stroke-width="1.8"/>'),
+  photos:svg('<g stroke="none" opacity=".92"><ellipse cx="12" cy="7.4" rx="2.6" ry="4" fill="#FF9F0A"/><ellipse cx="16.6" cy="12" rx="4" ry="2.6" fill="#34C759"/><ellipse cx="12" cy="16.6" rx="2.6" ry="4" fill="#0A84FF"/><ellipse cx="7.4" cy="12" rx="4" ry="2.6" fill="#FF375F"/></g>'),
+  cal:'<svg viewBox="0 0 24 24"><text x="12" y="8.6" text-anchor="middle" font-size="4.6" font-weight="700" fill="#FF3B30" font-family="-apple-system,Segoe UI,sans-serif">MIÉ</text><text x="12" y="19.8" text-anchor="middle" font-size="11.5" font-weight="300" fill="#111" font-family="-apple-system,Segoe UI,sans-serif">28</text></svg>',
+  notes:svg('<rect x="2.5" y="2.5" width="19" height="5.5" fill="#FFCC00" stroke="none"/><path d="M5 12h14M5 15.5h14M5 19h9" stroke="#C7C7CC" stroke-width="1.2"/>'),
+  maps:svg('<path d="M1.5 17.5 22.5 7" stroke="#fff" stroke-width="3.6"/><path d="m14.5 5.5-3 13 2.4-.8 1.4-6 5.4-2.2Z" fill="#0A84FF" stroke="none"/>'),
+  music:svg('<path fill="#fff" stroke="none" d="M16.5 4v10.6a2.8 2.8 0 1 1-1.6-2.6V7.4l-5.6 1.3v8.1a2.8 2.8 0 1 1-1.6-2.6V7.2Z"/>'),
+  files:svg('<path fill="#fff" stroke="none" d="M3.5 7a2 2 0 0 1 2-2h4l2 2h7a2 2 0 0 1 2 2v8.5a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2Z"/>'),
+  airdrop:svg('<circle cx="12" cy="12" r="2.4" fill="#fff" stroke="none"/><path d="M8 16a5.5 5.5 0 1 1 8 0M5.6 18.4a9 9 0 1 1 12.8 0" stroke="#fff" stroke-width="1.8"/>'),
+  weather:svg('<circle cx="9" cy="9" r="4" fill="#FFD60A" stroke="none"/><path d="M8 19.5h9a3.5 3.5 0 0 0 0-7 5 5 0 0 0-9.5 1.5A2.8 2.8 0 0 0 8 19.5Z" fill="#fff" stroke="none"/>')
+};
+const HAND='<span class="ring"></span><svg class="hand" viewBox="0 0 36 46"><path d="M10 3.5a3.5 3.5 0 0 1 7 0V18l1.2-.6a3.2 3.2 0 0 1 4.3 1.6l.4.9a3.2 3.2 0 0 1 4.4 2l.3.8a3 3 0 0 1 4.4 2.4V33c0 6.4-5 11.5-11.4 11.5h-2.4c-3.7 0-6.6-1.7-8.5-4.7L3.2 31.6a3.1 3.1 0 0 1 4.9-3.8L10 30Z" fill="#fff" stroke="#14213D" stroke-width="2.2" stroke-linejoin="round"/><path d="M17 18v7.5M22.9 20.8v5.2M27.6 23.9v4.1" stroke="#14213D" stroke-width="1.6" stroke-linecap="round"/></svg>';
+const CURSOR='<span class="ring"></span><svg class="hand" viewBox="0 0 18 22"><path d="M3 2v16.2l4.2-4 2.8 6.3 2.7-1.2-2.8-6.2H16Z" fill="#fff" stroke="#111" stroke-width="1.4" stroke-linejoin="round"/></svg>';
+
+/* ---------- Piezas ---------- */
+const SIG='<span class="sig"><i style="height:4px"></i><i style="height:6px"></i><i style="height:8px"></i><i style="height:10px"></i></span>';
+const sbI=(cls='')=>`<div class="sb ${cls}"><span>9:41</span><span class="sb-r">${SIG}5G<span class="bat"></span></span></div>`;
+const sbA=(cls='')=>`<div class="sb and ${cls}"><span>9:41</span><span class="sb-r">5G ${SIG}<span class="bat"></span></span></div>`;
+const hb=(l)=>`<div class="hb${l?' l':''}"></div>`;
+const ic=(label,o={})=>`<div class="ic${o.hit?' hit':''}"><i class="${o.cls||''}"${o.bg?` style="background:${o.bg}"`:''}>${o.g||''}</i>${o.dock?'':`<span>${label}</span>`}</div>`;
+const plIcon=(hit)=>`<div class="ic new${hit?' hit':''}"><i class="pl"></i><span>Partes LAV</span></div>`;
+const KB=['qwertyuiop','asdfghjklñ','zxcvbnm'];
+const keys=r=>[...r].map(k=>`<span>${k}</span>`).join('');
+const kb=(t,enter,hit)=>`<div class="kb ${t}"><div class="kr">${keys(KB[0])}</div><div class="kr">${keys(KB[1])}</div><div class="kr"><span class="w">⇧</span>${keys(KB[2])}<span class="w">⌫</span></div><div class="kr"><span class="w">123</span><span class="sp">espacio</span><span class="w go${hit?' hit':''}">${enter}</span></div></div>`;
+const welcome=(wide)=>`<div class="ap${wide?' wide':''}"><div class="ap-h">Partes LAV</div><div class="ap-c"><div class="card"><h3>Bienvenido</h3><p>Para usar la app tienes que registrarte con tu correo de Gmail. Solo se hace una vez.</p><div class="abtn">Registrarme</div><div class="abtn sec">Ya tengo cuenta</div></div></div></div>`;
+
+/* Esta misma guía, con el botón Copiar que se pulsa en la animación */
+const guidePage=()=>`<div class="gp"><div class="gp-hero"><div class="gp-brand"><i class="pl"></i><div><small>PARTES LAV · UTE LAV ESTE</small><b>Instala la app y haz tu primer parte</b></div></div>
+  <div class="gp-box"><span class="gp-l">Dirección de la app: cópiala</span><div class="gp-row"><code>${URL_APP}</code><span class="gp-copy hit" data-copy="1">Copiar</span></div></div></div>
+  <div class="gp-tabs t3"><span>1<b>Instalar</b></span><span>2<b>Registrarse</b></span><span>3<b>Hacer un parte</b></span></div><div class="gp-dev"></div></div>`;
+const GUIDE_URL=HOST+'/partes-lav/guia/instalar.html';
+
+/* ---------- iPhone ---------- */
+const iosHome=(app,hitS)=>`<div class="home ios-home">${sbI('light')}<div class="apps">
+  ${ic('Calendario',{bg:'#fff',g:G.cal})}${ic('Fotos',{bg:'#fff',g:G.photos})}${ic('Cámara',{bg:'linear-gradient(#A5A5AB,#6E6E75)',g:G.camera})}${ic('Correo',{bg:'linear-gradient(#45A6FF,#1C6EF2)',g:G.mail})}
+  ${ic('Mapas',{bg:'linear-gradient(#8BD996,#3FAE5A)',g:G.maps})}${ic('Notas',{bg:'#fff',g:G.notes})}${ic('Tiempo',{bg:'linear-gradient(#4FA3F7,#1D5FC9)',g:G.weather})}${ic('Ajustes',{bg:'linear-gradient(#A2A2A8,#6E6E75)',g:G.gear})}
+  ${app?plIcon(false):''}</div>
+  <div class="spot">${SV.search}Buscar</div>
+  <div class="dock">${ic('',{bg:'linear-gradient(#6EE38A,#28C24A)',g:G.phone,dock:1})}${ic('',{cls:'safari',dock:1,hit:hitS})}${ic('',{bg:'linear-gradient(#6EE38A,#28C24A)',g:G.chat,dock:1})}${ic('',{bg:'linear-gradient(#FF6B81,#FA2D48)',g:G.music,dock:1})}</div>${hb(1)}</div>`;
+
+const safari=st=>st==='typing'
+  ? `<div class="saf">${sbI()}<div class="saf-page fav"><h5>Favoritos</h5><div class="favs"><div><b>I</b>Intranet</div><div><b>C</b>Correo</div><div><b>T</b>Tiempo</div><div><b>N</b>Noticias</div></div><h5>Visitados con frecuencia</h5><div class="favs"><div><b>G</b>Google</div><div><b>Y</b>YouTube</div></div></div>
+     <div class="saf-type"><span class="paste">Pegar</span><div class="saf-field">${SV.search}<span data-type="${URL_APP}" data-paste="1"></span><span class="caret"></span><span class="clr">✕</span></div><span class="cancel">Cancelar</span></div>${kb('ios','ir',true)}${hb()}</div>`
+  : `<div class="saf">${sbI()}<div class="saf-page">${st==='guide'?guidePage():welcome()}</div>
+     <div class="saf-bar"><div class="saf-url"><span class="aa">aA</span><span class="host">${SV.lock}${HOST}</span>${SV.reload}</div>
+     <div class="saf-tools"><span>${SV.back}</span><span class="off">${SV.fwd}</span><span class="${st==='loaded'?'hit':''}">${SV.share}</span><span>${SV.book}</span><span>${SV.tabs}</span></div></div>${hb()}</div>`;
+
+const shRow=(t,i,hit)=>`<div class="sh-row${hit?' hit':''}">${t}${i}</div>`;
+const iosShare=()=>`<div class="saf">${sbI()}<div class="saf-page dimmed">${welcome()}</div>
+  <div class="sheet"><div class="sh-head"><i class="pl"></i><div class="sh-t"><b>Partes LAV</b><small>${HOST}</small><span class="sh-opt">Opciones ›</span></div><span class="sh-x">✕</span></div>
+  <div class="sh-apps"><div><i style="background:linear-gradient(#5FC4FF,#1B7FF3)">${G.airdrop}</i>AirDrop</div><div><i style="background:linear-gradient(#6EE38A,#28C24A)">${G.chat}</i>Mensajes</div><div><i style="background:linear-gradient(#45A6FF,#1C6EF2)">${G.mail}</i>Mail</div><div><i style="background:#fff">${G.notes}</i>Notas</div></div>
+  <div class="sh-group">${shRow('Imprimir',SV.print)}${shRow('Copiar',SV.copy)}${shRow('Añadir a pantalla de inicio',SV.plusSq,true)}${shRow('Añadir a favoritos',SV.star)}</div>
+  <div class="sh-group">${shRow('Añadir a la lista de lectura',SV.glasses)}${shRow('Añadir marcador',SV.book)}</div></div>${hb()}</div>`;
+
+const iosAdd=()=>`<div class="add">${sbI()}
+  <div class="add-top"><span class="ios-link">Cancelar</span><b>Añadir a pantalla d…</b><span class="ios-link hit"><b>Añadir</b></span></div>
+  <div class="add-card"><i class="pl"></i><div class="add-f"><div class="add-name"><span>Partes LAV</span><span class="caret"></span><span class="clr">✕</span></div><small>https://${URL_APP}/</small></div></div>
+  <p class="add-note">Se añadirá un icono a la pantalla de inicio para acceder más rápido a este sitio web desde tu navegador por omisión.</p>
+  <div class="grow"></div>${kb('ios','OK',false)}${hb()}</div>`;
+
+/* ---------- Android ---------- */
+const andHome=(app,hitC,hitA)=>`<div class="home and-home">${sbA('light')}<div class="clock">9:41<small>miércoles, 28 de octubre</small></div>
+  <div class="apps">${ic('Correo',{bg:'#1C6EF2',g:G.mail})}${ic('Fotos',{bg:'#fff',g:G.photos})}${ic('Calendario',{bg:'#fff',g:G.cal})}${ic('Ajustes',{bg:'#5F6368',g:G.gear})}
+  ${ic('Archivos',{bg:'#1A73E8',g:G.files})}${ic('Reloj',{bg:'#202124',g:G.clock})}${ic('Tiempo',{bg:'#2E6FD8',g:G.weather})}${app?plIcon(hitA):''}</div>
+  <div class="grow"></div>
+  <div class="dock">${ic('',{bg:'#1E8E3E',g:G.phone,dock:1})}${ic('',{bg:'#1A73E8',g:G.chat,dock:1})}${ic('',{cls:'chrome',dock:1,hit:hitC})}${ic('',{bg:'#5F6368',g:G.camera,dock:1})}</div>
+  <div class="gsearch">${SV.search}<span>Buscar</span>${SV.mic}</div>${hb(1)}</div>`;
+
+const crBar=(st)=>`<div class="cr-bar"><span class="cr-ic">${SV.home}</span>${st==='typing'
+    ? `<div class="cr-url focus"><span data-type="${URL_APP}" data-paste="1"></span><span class="caret w"></span></div><span class="cr-ic">✕</span><span class="paste">Pegar</span>`
+    : `<div class="cr-url">${SV.tune}<span class="u">${URL_APP}</span></div><span class="cr-ic">${SV.plus}</span><span class="cr-tabs">1</span><span class="cr-ic${st==='loaded'?' hit':''}">${SV.dots}</span>`}</div>`;
+const mi=(t,i,hit)=>`<div class="mi${hit?' hit':''}">${i}${t}</div>`;
+const chromeA=st=>{
+  if(st==='guide') return `<div class="cr">${sbA('dk')}<div class="cr-bar"><span class="cr-ic">${SV.home}</span><div class="cr-url">${SV.tune}<span class="u">${GUIDE_URL}</span></div><span class="cr-ic">${SV.plus}</span><span class="cr-tabs">1</span><span class="cr-ic">${SV.dots}</span></div><div class="cr-page">${guidePage()}</div><div class="ctoast">Copiado en el portapapeles</div>${hb()}</div>`;
+  if(st==='typing') return `<div class="cr">${sbA('dk')}${crBar(st)}<div class="cr-sugg"><div class="sg">${SV.globe}<div>${URL_APP}<small>Ir a la dirección</small></div></div><div class="sg">${SV.search}<div>mant-ute-lav-este</div></div></div>${kb('gb',SV.arrowR,true)}${hb(1)}</div>`;
+  return `<div class="cr">${sbA('dk')}${crBar(st)}<div class="cr-page">${welcome()}
+  ${st==='menu'?`<div class="menu"><div class="m-top">${SV.fwd}${SV.starF}${SV.down}${SV.info}${SV.reload}</div>
+    ${mi('Nueva pestaña',SV.newtab)}${mi('Nueva pestaña Incógnito',SV.incog)}${mi('Añadir pestaña a nuevo grupo',SV.group)}<div class="m-sep"></div>
+    ${mi('Historial',SV.hist)}${mi('Borrar datos de navegación',SV.trash)}${mi('Controles del sitio',SV.site)}<div class="m-sep"></div>
+    ${mi('Descargas',SV.dl)}${mi('Marcadores',SV.starF)}${mi('Pestañas recientes',SV.devices)}<div class="m-sep"></div>
+    ${mi('Compartir…',SV.shareA)}${mi('Buscar en la página',SV.find)}${mi('Traducir…',SV.transl)}${mi('Mostrar modo Lectura',SV.reader)}${mi('Instalar y crear acceso directo',SV.install,true)}</div>`:''}
+  ${st==='dialog'?`<div class="dim"></div><div class="asheet"><h4>Instalar y crear acceso directo</h4><div class="aopts">
+    <div class="aopt hit"><span class="bi"><i class="pl"></i><em>${SV.down}</em></span><div>Instalar</div><span class="chev">›</span></div>
+    <div class="aopt"><span class="bi"><i class="pl"></i><em class="chr"></em></span><div>Crear acceso directo<small>Los accesos directos se abren en Chrome</small></div><span class="chev">›</span></div></div></div>`:''}
+  </div>${hb()}</div>`;
+};
+
+/* ---------- Ordenador ---------- */
+const WC=`<span class="win-ctl"><span>—</span><span>☐</span><span>✕</span></span>`;
+const pcWin=st=>{
+  if(st==='app') return `<div class="desk"><div class="shortcut hit"><i class="pl"></i>Partes LAV</div>
+    <div class="appwin"><div class="tb"><i class="pl"></i>Partes LAV${WC}</div>${welcome(true)}</div>
+    <div class="taskbar"><span class="win"></span><span></span><span></span><i class="pl"></i></div></div>`;
+  if(st==='guide') return `<div class="pcw"><div class="pc-tabs"><div class="pc-tab"><i class="pl"></i>Instalar Partes LAV<span class="x">✕</span></div><span class="pc-plus">+</span>${WC}</div>
+    <div class="pc-bar">${SV.back}${SV.fwd}${SV.reload}<div class="pc-url">${SV.tune}<span class="u">${GUIDE_URL}</span>${SV.star}</div>${SV.dots}</div>
+    <div class="pc-page">${guidePage()}</div></div>`;
+  const typing=st==='typing';
+  return `<div class="pcw"><div class="pc-tabs"><div class="pc-tab">${typing?'Nueva pestaña':'<i class="pl"></i>Partes LAV'}<span class="x">✕</span></div><span class="pc-plus">+</span>${WC}</div>
+    <div class="pc-bar">${SV.back}${SV.fwd}${SV.reload}
+      <div class="pc-url${typing?' focus':''}">${typing?`<span class="u"><span data-type="${URL_APP}" data-paste="1"></span><span class="caret g"></span></span><span class="paste">Pegar &nbsp;<small>Ctrl+V</small></span>`:`${SV.tune}<span class="u">${URL_APP}</span><span class="pc-inst${st==='loaded'?' hit':''}">${SV.install}</span>${SV.star}`}</div>${SV.dots}</div>
+    <div class="pc-page">${typing?'<div class="ntp"><div>Buscar o escribir una dirección web</div></div>':welcome(true)}
+    ${typing?`<div class="omni"><div class="sg hit">${SV.globe}<div>${URL_APP}</div></div><div class="sg">${SV.search}<div>mant-ute-lav-este – Buscar</div></div></div>`:''}
+    ${st==='dialog'?`<div class="pop"><h4>¿Instalar app?</h4><div class="who"><i class="pl"></i><div><b>Partes LAV</b><small>${HOST}</small></div></div><div class="acts"><span class="gbtn fill hit">Instalar</span><span class="gbtn">Cancelar</span></div></div>`:''}</div></div>`;
+};
+
+/* ---------- Registro (pantallas reales de la app) ---------- */
+const reg=(title,back,body)=>`<div class="ap">${sbA('navy')}<div class="ap-h">${back?'<span class="bk">‹</span>':''}${title}</div><div class="ap-c">${body}</div>${hb()}</div>`;
+const fld=(label,o={})=>`<div class="fld${o.focus?' focus':''}">${label}<b class="${o.pin?'pin':''}">${o.type?`<span data-type="${o.type}"></span><span class="caret g"></span>`:(o.val||'')}</b></div>`;
+const inicio=()=>`<div class="ap">${sbA('navy')}<div class="ap-h"><div>Partes LAV<span class="sub">Juan García</span></div><span class="mdots">⋮</span></div><div class="ap-c">
+  <div class="aviso">La oficina aún no ha aprobado tu registro. En cuanto lo haga podrás hacer partes: la app lo comprueba sola cada vez que la abres.</div></div>${hb()}</div>`;
+
+/* ---------- Guías ---------- */
+const C=`<code>${URL_APP}</code>`;
+const GI={
+  iphone:{n:2,pre:'Instalar en',label:'iPhone',device:'phone',os:'ios',steps:[
+    {t:'Copia la dirección',d:'En esta misma página, arriba del todo, pulsa el botón naranja <b>Copiar</b>. Se pone verde: la dirección ya está guardada para pegarla.',s:()=>safari('guide'),dur:DUR_TYPE},
+    {t:'Abre Safari',d:'Sal a la pantalla de inicio y abre Safari, la brújula azul. En iPhone tiene que ser Safari, no Chrome.',s:()=>iosHome(false,true)},
+    {t:'Pega la dirección',d:`Toca la barra de abajo, deja el dedo pulsado y elige <b>Pegar</b>: se pone la dirección que acabas de copiar. Luego pulsa «ir». También puedes escribirla: ${C}`,s:()=>safari('typing'),dur:DUR_TYPE},
+    {t:'Pulsa Compartir',d:'Es el cuadrado con la flecha hacia arriba, en el centro de la barra de abajo. Si no lo ves, toca los tres puntos (···) y después «Compartir».',s:()=>safari('loaded')},
+    {t:'Añadir a pantalla de inicio',d:'Baja por la lista hasta ver <b>Añadir a pantalla de inicio</b> (el cuadrado con un +) y tócalo.',s:iosShare},
+    {t:'Revisa el nombre y pulsa Añadir',d:'Tiene que poner <b>Partes LAV</b>; si pone otra cosa, bórralo con la ✕ y escríbelo. Pulsa «Añadir», arriba a la derecha. Si ves «Abrir como app web», déjalo activado.',s:iosAdd,dur:6400},
+    {t:'¡Instalada!',d:'El icono de Partes LAV ya está en tu pantalla de inicio. Ábrelo y sigue con <b>Registrarse</b>.',s:()=>iosHome(true,false)},
+  ]},
+  android:{n:2,pre:'Instalar en',label:'Android',device:'phone',os:'and',steps:[
+    {t:'Copia la dirección',d:'En esta misma página, arriba del todo, pulsa el botón naranja <b>Copiar</b>. Se pone verde y el móvil avisa de que se ha copiado.',s:()=>chromeA('guide'),dur:DUR_TYPE},
+    {t:'Abre Chrome',d:'Sal a la pantalla de inicio y toca el icono de Chrome, el círculo de colores.',s:()=>andHome(false,true)},
+    {t:'Pega la dirección',d:`Toca la barra de arriba, deja el dedo pulsado y elige <b>Pegar</b>: se pone la dirección que acabas de copiar. Luego pulsa la flecha del teclado. También puedes escribirla: ${C}`,s:()=>chromeA('typing'),dur:DUR_TYPE},
+    {t:'Abre el menú',d:'Toca los tres puntos ⋮, arriba a la derecha.',s:()=>chromeA('loaded')},
+    {t:'Instalar y crear acceso directo',d:'Está al final del menú. En algunos móviles se llama «Instalar aplicación» o «Añadir a pantalla de inicio».',s:()=>chromeA('menu')},
+    {t:'Pulsa Instalar',d:'Elige la primera opción, <b>Instalar</b>. No uses «Crear acceso directo»: así solo se abre como una web dentro de Chrome.',s:()=>chromeA('dialog')},
+    {t:'¡Instalada!',d:'Partes LAV ya está en tu pantalla de inicio y entre tus aplicaciones. Ábrela y sigue con <b>Registrarse</b>.',s:()=>andHome(true,false,false)},
+  ]},
+  pc:{n:2,pre:'Instalar en',label:'Ordenador',device:'pc',os:'win',steps:[
+    {t:'Copia la dirección',d:'En esta misma página, arriba del todo, haz clic en el botón naranja <b>Copiar</b>. Se pone verde: la dirección ya está guardada.',s:()=>pcWin('guide'),dur:DUR_TYPE},
+    {t:'Pega la dirección',d:`Abre una pestaña nueva en Chrome o Edge (Ctrl+T), haz clic en la barra de arriba y pega con <b>Ctrl+V</b>. Luego pulsa Intro. También puedes escribirla: ${C}`,s:()=>pcWin('typing'),dur:DUR_TYPE},
+    {t:'Pulsa el icono de instalar',d:'Es la pantallita con una flecha, a la derecha de la barra de direcciones. Si no sale, mira «Si algo no sale», más abajo.',s:()=>pcWin('loaded')},
+    {t:'Pulsa Instalar',d:'Confírmalo en la ventanita que aparece.',s:()=>pcWin('dialog')},
+    {t:'¡Instalada!',d:'La app se abre en su propia ventana y deja un acceso directo en el escritorio y en el menú Inicio. Sigue con <b>Registrarse</b>.',s:()=>pcWin('app')},
+  ]},
+  registro:{n:3,pre:'Después',label:'Registrarse',device:'phone',os:'and',steps:[
+    {t:'Abre la app',d:'Toca el icono de Partes LAV que acabas de instalar.',s:()=>andHome(true,false,true)},
+    {t:'Pulsa Registrarme',d:'Solo se hace una vez. Si ya te registraste en otro móvil, pulsa «Ya tengo cuenta» y entra con tu Gmail y tu PIN.',
+      s:()=>reg('Partes LAV',0,`<div class="card"><h3>Bienvenido</h3><p>Para usar la app tienes que registrarte con tu correo de Gmail. Solo se hace una vez.</p><div class="abtn hit">Registrarme</div><div class="abtn sec">Ya tengo cuenta</div></div>`)},
+    {t:'Escribe tu Gmail',d:'Escribe tu correo de Gmail y pulsa «Enviarme el código».',dur:6400,
+      s:()=>reg('Registro · 1 de 4',1,`<div class="card"><h3>Tu correo de Gmail</h3><p>Te mandaremos un código para comprobar que el correo es tuyo.</p>${fld('Correo',{focus:1,type:'juan.garcia@gmail.com'})}<div class="abtn hit">Enviarme el código</div></div>`)},
+    {t:'Escribe el código',d:'Abre Gmail: te llega un código de 6 cifras. Si no lo ves, mira en «Spam» o «Promociones». Escríbelo y pulsa «Comprobar».',dur:6400,
+      s:()=>reg('Registro · 2 de 4',1,`<div class="card"><h3>Escribe el código</h3><p>Te hemos enviado un código de 6 cifras a <b>juan.garcia@gmail.com</b>. Si no lo ves, mira en «Spam» o en «Promociones».</p>${fld('Código',{focus:1,pin:1,type:'482913'})}<div class="abtn hit">Comprobar</div><div class="alnk">No me ha llegado: enviar otro</div></div>`)},
+    {t:'Escribe tu nombre',d:'Tu nombre y al menos un apellido, como te tiene la empresa. Pulsa «Buscarme». Si no te encuentra, avisa a la oficina.',dur:6400,
+      s:()=>reg('Registro · 3 de 4',1,`<div class="card"><h3>¿Quién eres?</h3>${fld('Tu nombre y apellidos',{focus:1,type:'Juan García'})}<div class="abtn hit">Buscarme</div><p>Escribe tu nombre y al menos un apellido, como los tiene la empresa. Si no te encuentra, habla con la oficina.</p></div>`)},
+    {t:'Crea tu PIN',d:'Comprueba que sale tu nombre. Elige un PIN de 4 a 6 cifras y repítelo. Es tu contraseña: no se lo digas a nadie.',
+      s:()=>reg('Registro · 4 de 4',1,`<div class="card"><h3>Juan García</h3><p>Crea tu PIN de 4 a 6 cifras. Es tu contraseña: te lo pedirá la app al abrirla y para entrar desde otro móvil.</p>${fld('PIN',{pin:1,val:'••••'})}${fld('Repite el PIN',{pin:1,val:'••••'})}<div class="abtn hit">Terminar el registro</div></div>`)},
+    {t:'¡Ya estás dentro!',d:'Verás un aviso amarillo hasta que la oficina apruebe tu registro. <b>Cuando lo apruebe</b> salen los botones INFRA, SUPER y MAQUINARIA y ya puedes hacer partes. Si tarda, avisa a la oficina.',s:inicio,dur:6400},
+  ]},
+};
+/* ---------- Piezas de la app ----------
+   data-k marca lo que se puede tocar (el paso dice cuál lleva el dedo) y data-c cada tarjeta
+   (el paso dice hasta cuál baja la pantalla). */
+const LAB={infra:'INFRA',super:'SUPER'}, REF={infra:'INF-0035',super:'SUP-0021'}, PREV={infra:'INF-0034',super:'SUP-0020'};
+const K=k=>k?` data-k="${k}"`:'';
+const card=(c,h,inner,cls='')=>`<div class="a-card ${cls}" data-c="${c}"><h2>${h}</h2>${inner}</div>`;
+const OB='<span class="a-oblig">obligatorio</span>';
+const cnt=n=>`<span class="a-cnt">${n}</span>`;
+const lab=(t,sm)=>`<span class="a-lab">${t}${sm?` <small>${sm}</small>`:''}</span>`;
+const inp=(v='',c='',ph=false,k='')=>`<div class="a-in ${c}${ph?' hold':''}"${K(k)}>${v}</div>`;
+const typ=(txt,c='')=>`<div class="a-in focus ${c}"><span data-type="${txt}"></span><span class="caret"></span></div>`;
+const seg=(opts,on,ks=[])=>`<div class="a-seg">${opts.map((o,i)=>`<span class="${[].concat(on).includes(i)?'on':''}"${K(ks[i])}>${o}</span>`).join('')}</div>`;
+const chk=(txt,on,k='',sm='')=>`<div class="a-chk${on?' on':''}"${K(k)}><i>${on?'✓':''}</i><span>${txt}${sm?`<br><small>${sm}</small>`:''}</span></div>`;
+const btn=(txt,c='',k='')=>`<div class="a-btn ${c}"${K(k)}>${txt}</div>`;
+const sheet=inner=>`<div class="a-dim"></div><div class="a-sheet">${inner}</div>`;
+const page=(t,bar,inner,pie='',over='')=>`<div class="a-app">${sb(t)}${bar}<div class="a-body"><div class="a-scroll${pie?' con-pie':''}">${inner}</div>${pie?`<div class="a-pie">${pie}</div>`:''}</div>${over}${hb()}</div>`;
+const bar=(t,back,title)=>`<div class="a-bar ${t}"><span class="a-back">‹ ${back}</span><span class="a-title">${title}</span><span class="a-sv">Guardado</span></div>`;
+const MEDIDAS=['Extintor en el vehículo','Batefuegos','Mochila extintora de agua','Cuba o depósito de agua','Zona de trabajo despejada de vegetación','Vigilancia tras trabajos con riesgo de chispas','Revisión de la zona al terminar'];
+const th=c=>`<div class="a-th ${c}"><i>28/10 22:41 · SIOS 48213</i></div>`;
+
+/* ---------- Pantallas (vistas): cada una es una pantalla real de la app, entera ---------- */
+const VIEWS={
+  inicio(t,s){
+    const item=`<div class="a-item"><span class="a-eti ${t[0]}">${ETI[t]}</span><span class="inf"><strong>27/10/2026</strong> · ${PREV[t]}<br><small>2 ${CUE[t]} · Recibido en la oficina 27/10/2026 18:42</small></span><span class="fl">›</span></div>`;
+    const cola=`<h2 class="a-grp">Pendientes de enviar</h2><div class="a-item cerrado"><span class="a-eti ${t[0]}">${ETI[t]}</span><span class="inf"><strong>28/10/2026</strong> · ${REF[t]}<br><small>1 ${CUE[t]} · En cola: se enviará solo</small></span><span class="fl">›</span></div>`;
+    return page('navy',`<div class="a-bar navy"><span class="a-title">Partes LAV<small>Juan García</small></span><span class="a-mdots">⋮</span></div>`,
+      `${s.cola?`<div class="a-aviso fila"><span>Tienes 1 parte sin enviar</span><div class="a-btn sec"${K('ahora')}>Enviar ahora</div></div>`:''}
+      <div class="a-tipos"><div class="a-tipo i"${K(t==='infra'?'tipo':'')}><b>INFRA</b>Infraestructura</div><div class="a-tipo s"${K(t==='super'?'tipo':'')}><b>SUPER</b>Superestructura</div><div class="a-tipo m"${K(t==="maq"?"tipo":"")}><b>MAQUINARIA</b>Maquinaria de vía</div></div>
+      ${s.vacio?'<p class="a-vacio">Aún no hay partes. Pulsa INFRA, SUPER o MAQUINARIA para empezar.</p>':`${s.cola?cola:''}<h2 class="a-grp">Enviados</h2>${item}`}`,'',
+      s.maquina?maqSheet(t):s.repetir?sheet(`<h2>¿Empezar igual que el último parte?</h2><p class="a-nota">${PREV[t]} · 27/10/2026</p>
+        ${chk('Personal',1,'','2 persona(s): Marta López, Pedro Ruiz')}${chk('Maquinaria',1,'','Sí: retroexcavadora mixta')}${chk('Vehículos',1,'','No')}${chk('Medidas antiincendios',1,'','3 medida(s)')}
+        <p class="a-nota" style="margin-top:10px">No se copian los trabajos, las horas extra, las fotos${t==='super'?', el formato 1':''} ni las observaciones.</p>
+        ${btn('Sí, copiar lo marcado','pri big','copiar')}${btn('No, empezar en blanco','sec')}`):'');
+  },
+  parte(t,s){
+    const sup=t==='super';
+    const per=(n,d)=>`<div class="a-per${s.nuevo===n?' a-new':''}"><div><strong>${n}</strong><small>${d}</small></div><span class="a-x">✕</span></div>`;
+    const trab=s.trab?`<div class="a-item okb" style="margin-top:2px"><span class="a-num">✓</span><span class="inf"><strong>SIOS 48213</strong><br><small>Línea 040 · vía ${sup?'1, 2':'2'} · PK 481+045 – 481+300</small><br><small>Finalizado · fotos: 2 antes, 0 durante, 1 después</small><br><small class="a-listo">Completo</small></span><span class="fl">›</span></div>`:'<p class="a-nota">Añade cada trabajo de la jornada por separado, con sus fotos.</p>';
+    const eq=(c,tit,preg,eleg,otro,on,kSi,kNo,kSel)=>card(c,`${tit} ${OB}`,`${lab(preg)}${seg(['Sí','No'],on,[kSi,kNo])}${on===0?`<div class="a-in sel"${K(kSel)} style="margin-top:8px">${eleg}</div>${btn(otro,'sec')}`:''}`);
+    return page(t,bar(t,'Inicio',`${LAB[t]} · ${REF[t]}`),`
+      ${card('jornada','Jornada',`<span class="a-lab">Fecha de la jornada</span>${inp('28/10/2026','',false,'fecha')}
+        ${sup?chk('Jornada nocturna',0,'','(pon la fecha del día en que empezó)'):''}
+        <span class="a-lab">Capataz</span><div class="a-in fixed">Juan García</div>
+        ${chk('Jornada sin trabajos',0,'','(no se ha podido trabajar: lluvia, avería…)')}`)}
+      ${card('personal',`Personal ${cnt(s.marta?2:1)}`,`${per('Juan García','Rover · Capataz')}${s.marta?per('Marta López','Rover · Peón'):''}
+        ${btn('Copiar el personal del último parte','sec')}
+        <span class="a-lab">Añadir de la lista</span>${s.busca?typ('lópez'):inp('Escribe un nombre o una empresa','',true)}
+        ${s.busca?`<div class="a-res"${K('res')}><strong>Marta López</strong><small>Rover · Peón</small></div>`:''}
+        ${btn('+ Añadir a alguien que no está en la lista','sec')}`)}
+      ${eq('maq','Maquinaria','¿Se ha usado maquinaria?','Elige la máquina…','+ Añadir otra máquina',s.eq>=1?0:-1,'maqsi','','maqsel')}
+      ${eq('veh','Vehículos','¿Se han usado vehículos?','Elige el vehículo…','+ Añadir otro vehículo',s.eq>=2?1:-1,'','vehno','')}
+      ${card('trabajos',`Trabajos ${cnt(s.trab?1:0)}`,`${trab}${btn(s.trab?'+ Añadir otro trabajo':'+ Añadir trabajo','add','add')}`)}
+      ${card('medidas',`Medidas antiincendios ${OB}`,`<p class="a-nota">Marca todas las que se hayan tomado.</p>${MEDIDAS.map((m,i)=>chk(m,i===0&&s.med,i===0?'med0':'')).join('')}${chk('Otras',0)}`)}
+      ${sup?card('f1',`Adjuntar formato 1 ${cnt(0)}`,`<p class="a-nota">Opcional. Si el trabajo lleva este formato, haz una foto de cada hoja (hasta 6).</p><div class="a-fbtn">${btn('📷 Cámara','sec','f1cam')}${btn('🖼️ Galería','sec')}</div>`):''}
+      ${card('obs','Observaciones',`<div class="a-in ta hold">Opcional</div>`)}
+      ${btn('Borrar este borrador','danger')}`,
+      `${btn('Guardar y salir','sec')}${btn('Cerrar parte','pri','cerrar')}`,
+      s.over==='extras'?sheet(`<h2>¿Ha habido horas extra?</h2><p class="a-nota">Con «Sí» pones las horas de cada persona y eliges si son normales, nocturnas o festivas.</p>${btn('Sí, apuntarlas','pri big')}${btn('No, cerrar el parte','sec big','extno')}${btn('Volver al parte','link')}`)
+      :s.over==='confirma'?`<div class="a-dim"></div><div class="a-dlg"><p>¿Cerrar el parte? Después ya no se puede cambiar: solo corregir con una revisión nueva.</p><div class="acts"><span>Cancelar</span><span${K('aceptar')}>Aceptar</span></div></div>`:'');
+  },
+  trabajo(t,s){
+    const sup=t==='super', via=s.via||'', lleno=via==='hecho';
+    return page(t,bar(t,'Parte',`Trabajo 1 · ${REF[t]}`),`
+      ${card('ref','Referencia',`${seg(['SIOS','Incidencia','Sin referencia'],s.sios?0:-1,['sios'])}
+        ${s.sios?`${lab('Nº de SIOS')}${s.ref==='tecleo'?typ('48213'):inp('48213')}`:''}
+        ${sup?'':`${lab('Tipo de trabajo','(opcional, solo uno)')}<div style="display:flex;gap:26px">${chk('RREE',0)}${chk('POI',0)}</div>`}
+        ${lab('Nº acta PIDAME')}${inp('')}`)}
+      ${card('via','Vía y horario',`${chk('No se ocupa la vía',0,'','(p. ej. trabajos en base)')}
+        <div class="a-row2"><div>${lab('Telefonema de entrada nº')}${inp(via?'4821':'')}</div><div>${lab('Telefonema de salida nº')}${inp(via?'4830':'')}</div></div>
+        <div class="a-row2"><div>${lab('Entrada en vía')}${via==='tecleo'?typ('22:30'):inp(lleno?'22:30':'hh:mm','',!lleno)}</div><div>${lab('Salida de vía')}${inp(lleno?'05:15':'hh:mm','',!lleno)}</div></div>
+        ${lab('Línea')}${seg(['040','038'],via?0:-1)}
+        ${lab('Vía',sup?'(marca todas las que uses)':'')}${seg(['1','2','3','4','5'],!via?[]:sup?[0,1]:[1])}
+        ${lab('Aparato','(opcional)')}<div class="a-in sel hold">Sin aparato</div>
+        <div class="a-row2" data-c="pk"><div>${lab('PK inicio')}<div class="a-pk">${inp(lleno?'481':'km','',!lleno)}<b>+</b>${inp(lleno?'045':'m','',!lleno)}</div></div><div>${lab('PK fin')}<div class="a-pk">${inp(lleno?'481':'km','',!lleno)}<b>+</b>${inp(lleno?'300':'m','',!lleno)}</div></div></div>`)}
+      ${card('hecho','Trabajo realizado',`${lab(`Motivo de actuación ${OB}`)}<div class="a-in sel"${K('motivo')}>Elige el motivo…</div>
+        ${lab('Metros lineales','(opcional)')}${inp('')}
+        ${lab('Descripción','(opcional)')}<div class="a-in ta hold"></div>
+        ${lab('¿Trabajo finalizado?')}${seg(['Sí','No, sin terminar','No realizado'],s.fin?0:-1,['finsi'])}`)}
+      ${card('fotos','Fotos',`<p class="a-nota">Obligatorio: al menos una de <strong>antes</strong> y una de <strong>después</strong>. Cada foto lleva fecha, hora y referencia, y se le quita la ubicación.</p>
+        <div class="a-fase"><div class="a-fcab"><strong>Antes</strong> ${cnt(2)}</div><div class="a-fbtn">${btn('📷 Cámara','sec')}${btn('🖼️ Galería','sec')}</div><div class="a-thumbs">${th('')}${th('b')}</div></div>
+        <div class="a-fase"><div class="a-fcab"><strong>Durante</strong> ${cnt(0)}</div><div class="a-fbtn">${btn('📷 Cámara','sec')}${btn('🖼️ Galería','sec')}</div></div>
+        <div class="a-fase" data-c="desp"><div class="a-fcab"><strong>Después</strong> ${cnt(s.foto?1:0)} ${s.foto?'':'<span class="a-oblig">mín. 1</span>'}</div><div class="a-fbtn">${btn('📷 Cámara','sec','camdesp')}${btn('🖼️ Galería','sec')}</div>${s.foto?`<div class="a-thumbs a-new">${th('c')}</div>`:''}</div>
+        ${chk('No se han podido hacer fotos',0)}`)}
+      ${btn('Eliminar este trabajo','danger')}`,
+      btn('Listo','pri big','listo'),
+      s.over==='otro'?sheet(`<h2>¿Has hecho otro trabajo en esta jornada?</h2>${btn('Sí, añadir otro trabajo','pri big')}${btn('No, volver al parte','sec big','volver')}`):'');
+  },
+  envio(t,s){
+    const ok=s.m!=='cerrado';
+    const res=`<p>Jornada del 28/10/2026 · 1 ${CUE[t]} · 2 persona(s)</p><p><small>Cerrado en el móvil: 28/10/2026 06:02</small></p>`;
+    return page(t,bar(t,'Inicio',`${LAB[t]} · ${REF[t]}`),
+      `${ok?card('estado','Recibido en la oficina ✓',`<p><strong>28/10/2026 06:03</strong></p>${res}`,`ok${s.m==='ok'?' a-new':''}`)
+        :card('estado','Cerrado · falta enviarlo',`${res}${btn('Enviar a la oficina','pri big','enviar')}`,'pend')}
+      <div class="a-card">${btn('Ver el PDF','sec')}${ok?'':btn('¿No funciona el envío? Mandarlo por Gmail','link')}</div>
+      ${card('corregir','¿Hay algo mal?',`<p class="a-nota">Puedes corregirlo: se crea una copia para editar y, al enviarla, la oficina guarda las dos versiones.</p>${btn('Corregir el parte','sec','corregir')}`)}`,
+      '',s.m==='ok'?'<div class="a-toast">Recibido en la oficina ✓</div>':'');
+  },
+};
+
+
+/* ---------- Parte de maquinaria de vía (bateadora) ---------- */
+Object.assign(LAB,{maq:'MAQUINARIA'}); Object.assign(REF,{maq:'MAQ-0012'}); Object.assign(PREV,{maq:'MAQ-0011'});
+const ETI={infra:'INFRA',super:'SUPER',maq:'MAQ'}, CUE={infra:'trabajo(s)',super:'trabajo(s)',maq:'tajo(s)'};
+const maqSheet=t=>sheet(`<h2>¿Con qué máquina?</h2><p class="a-nota">Según la máquina se abre su parte.</p><h3 class="a-h3">Maquinaria de vía</h3>
+  ${btn('Bateadora 08-475-4S <small>· UIC 99713011401-7</small>','sec','bate')}${btn('Perfiladora PDB-110 <small>· UIC 99713011302-7</small>','sec')}${btn('Estabilizador DGS-62N <small>· UIC 97180150217-2</small>','sec')}${btn('Cancelar','')}`);
+const ovrP=s=>s.over==='extras'?sheet(`<h2>¿Ha habido horas extra?</h2><p class="a-nota">Con «Sí» pones las horas de cada persona y eliges si son normales, nocturnas o festivas.</p>${btn('Sí, apuntarlas','pri big')}${btn('No, cerrar el parte','sec big','extno')}${btn('Volver al parte','link')}`)
+  :s.over==='confirma'?`<div class="a-dim"></div><div class="a-dlg"><p>¿Cerrar el parte? Después ya no se puede cambiar: solo corregir con una revisión nueva.</p><div class="acts"><span>Cancelar</span><span${K('aceptar')}>Aceptar</span></div></div>`:'';
+
+VIEWS.maq=(t,s)=>{
+  const tj=s.tj||0, hh=v=>inp(v||'hh:mm','',!v);
+  const pk=(l,km,m)=>`${lab(l)}<div class="a-pk">${inp(km||'km','',!km)}<b>+</b>${inp(m||'m','',!m)}</div>`;
+  const op=(titulo,on,det='',k='')=>`${lab(titulo)}${seg(['Sí','No'],on,[k])}${det}`;
+  const nota=tj>=5?'<p class="a-listo" data-c="tjfin">Tajo completo</p>'
+    :`<p class="a-falta">Falta: ${tj<1?'llegada a tajo, inicio de trabajo, fin de trabajo, salida de tajo…':tj<2?'vía, PK inicio, PK final…':'alineado, estabilizado, registro, perfilado…'}</p>`;
+  const per=(c,titulo,ob,nombre,k)=>`${lab(`${titulo}${ob?` ${OB}`:''}`)}${nombre?`<div class="a-per${s.pers===(c==='enc'?1:2)?' a-new':''}"><div><strong>${nombre}</strong></div><span class="a-x">✕</span></div>`:`<div class="a-in sel"${K(k)}>Elige…</div>`}`;
+  const p=s.pers||0;
+  return page(t,bar(t,'Inicio',`${LAB[t]} · ${REF[t]}`),`
+    ${card('jornada','Jornada',`${lab('Fecha','(si es de noche, el día en que empieza)')}${inp('28/10/2026','',false,'fecha')}
+      <div class="a-row2"><div>${lab('Horario: inicio')}${hh(s.h&&'22:00')}</div><div>${lab('Horario: fin')}${hh(s.h&&'06:00')}</div></div>
+      ${lab(`¿Va en entrega de vía bloqueada (EVB)? ${OB}`)}${seg(['Sí','No'],s.evb?0:-1,['evbsi'])}
+      ${lab('Lo rellena')}<div class="a-in fixed">Juan García</div>
+      ${chk('Jornada sin trabajos',0,'','(no se ha podido trabajar: lluvia, avería…)')}`)}
+    ${card('maqv',`Máquina ${OB}`,`<div class="a-in sel">Bateadora 08-475-4S · UIC 99713011401-7</div><p class="a-nota" style="margin:4px 0 0">Trabajo: Bateo</p>
+      ${lab('Horas')}${s.hr===1?typ('7,5'):inp(s.hr===2?'7,5':'','')}`)}
+    ${card('viaje','Viaje',`<div class="a-row2"><div>${lab('Hora de salida')}${hh(s.via&&'20:30')}</div><div>${lab('Lugar de salida')}${inp(s.via?'Base Requena':'')}</div></div>
+      <div class="a-row2"><div>${lab('Hora de llegada')}${hh(s.via&&'06:30')}</div><div>${lab('Lugar de llegada')}${inp(s.via?'Base Requena':'')}</div></div>`)}
+    ${card('tajos',`Tajos ${cnt(1)}`,`<div class="a-sub"><h3 class="a-h3" style="margin:0">Tajo 1</h3>
+      <div class="a-row2"><div>${lab('Llegada a tajo')}${tj===0&&s.tec?typ('22:15'):hh(tj>=1&&'22:15')}</div><div>${lab('Inicio de trabajo')}${hh(tj>=1&&'22:40')}</div></div>
+      <div class="a-row2"><div>${lab('Fin de trabajo')}${hh(tj>=1&&'04:50')}</div><div>${lab('Salida de tajo')}${hh(tj>=1&&'05:10')}</div></div>
+      <div data-c="tjvia">${lab('Vía','(marca todas las que uses)')}<div class="a-seg a-seg5">${[1,2,3,4,5].map(v=>`<span class="${tj>=2&&v<=2?'on':''}">Vía ${v}</span>`).join('')}</div></div>
+      <div class="a-row2"><div>${pk('PK inicio',tj>=2&&'481',tj>=2&&'045')}</div><div>${pk('PK final',tj>=2&&'481',tj>=2&&'300')}</div></div>
+      ${lab('Desvío / AD','(opcional)')}<div class="a-in sel hold">Sin desvío</div>
+      <div class="a-op" data-c="ops">${op('Nivelado',tj>=3?0:-1,`${tj>=3?seg(['Calculado','Manual','Visor'],tj>=4?0:-1,['nivcalc']):''}${tj>=4?`<div class="a-row2"><div>${lab('Lev. máx. (mm)')}${inp('14')}</div><div>${pk('PK del lev. máx.','481','120')}</div></div>`:''}`,'nivsi')}</div>
+      <div class="a-op">${op('Alineado',tj>=5?0:-1,tj>=5?seg(['Calculado','Auto','Visor'],1):'')}</div>
+      <div class="a-op">${op('Estabilizado',tj>=5?0:-1,tj>=5?`${lab('¿Programada?')}${seg(['Sí','No'],0)}`:'')}</div>
+      <div class="a-op">${op('Registro',tj>=5?0:-1,tj>=5?seg(['Antes','Después','Ambos'],0):'')}</div>
+      <div class="a-op">${op('Perfilado',tj>=5?1:-1)}</div>
+      ${nota}</div>
+      <div data-c="tjadd">${btn('+ Añadir tajo','add','addtajo')}</div>`)}
+    ${card('obs','Observaciones',`<div class="a-in ta hold">Opcional</div>`)}
+    ${card('drp',`Registros DRP ${cnt(s.drp?1:0)}`,`<p class="a-nota">Opcional. Añade los archivos .drp que hayas bajado de la bateadora (hasta 6, 10 MB en total).</p>${btn('📎 Añadir archivos DRP','sec','drpadd')}
+      ${s.drp?`<div class="a-per a-new"><div><strong>registro_bateadora.drp</strong><small>412 KB</small></div><span class="a-x">✕</span></div>`:''}`)}
+    ${card('pers',`Personal ${cnt(p)}`,`<p class="a-nota">Elige quién ocupa cada puesto. Los que no son obligatorios pueden quedar vacíos.</p>
+      ${per('enc','Encargado de trabajo',1,p>=1&&'Marta López','enc')}${per('mq','Maquinista tipo A',0,'','')}${per('pil','Piloto',0,'','')}${per('omi','OMI',1,p>=2&&'Luis Martín','omi')}${per('op','Operario/s',0,'','')}`)}
+    ${btn('Borrar este borrador','danger')}`,
+    `${btn('Guardar y salir','sec')}${btn('Cerrar parte','pri','cerrar')}`,ovrP(s));
+};
+
+const mkMaq=()=>{
+  const M=(s,to,hit,extra={})=>({v:'maq',s,to,hit,...extra});
+  const E={h:1,evb:1,hr:2,via:1}, F={...E,tj:5,drp:1,pers:2};
+  return [
+    {c:0,t:'Elige el tipo de parte',d:'Toca <b>MAQUINARIA</b>. Es otro tipo de parte, con sus propias pantallas.',ph:[{v:'inicio',s:{vacio:1},hit:'tipo'}]},
+    {c:0,t:'Elige la máquina',d:'Según la máquina se abre su parte. Toca <b>la bateadora</b>. (La locomotora y la dresina tienen el suyo.)',ph:[{v:'inicio',s:{vacio:1,maquina:1},hit:'bate'}]},
+    {c:0,t:'Jornada y horario',d:'Pon la <b>fecha</b>, el horario y contesta si va en <b>EVB</b> (entrega de vía bloqueada): de eso dependen los puestos obligatorios.',ph:[M({},'jornada','fecha'),M({h:1},'jornada','evbsi'),M({h:1,evb:1},'jornada')]},
+    {c:0,t:'Máquina y viaje',d:'La máquina ya viene elegida. Pon sus <b>horas</b> y el viaje de salida y de llegada.',ph:[M({h:1,evb:1,hr:1,tec:1},'maqv'),M({h:1,evb:1,hr:2,via:1},'viaje')]},
+    {c:1,t:'Horas del tajo',d:'Un tajo es cada tramo de trabajo. Escribe <b>llegada, inicio, fin y salida</b> solo con cifras: 2215 → 22:15.',ph:[M({...E,tj:0,tec:1},'tajos'),M({...E,tj:1},'tajos')]},
+    {c:1,t:'Vía y PK del tajo',d:'Marca <b>todas las vías</b> que uses y los PK de inicio y final. El desvío / AD es opcional.',ph:[M({...E,tj:2},'tjvia')]},
+    {c:1,t:'Qué ha hecho la máquina',d:'Contesta <b>Sí o No</b> en cada operación: nivelado, alineado, estabilizado, registro y perfilado. Con Sí salen sus detalles.',ph:[M({...E,tj:2},'ops','nivsi'),M({...E,tj:3},'ops','nivcalc'),M({...E,tj:4},'ops'),M({...E,tj:5},'tjfin')]},
+    {c:1,t:'Más tajos',d:'Si la máquina trabajó en otro tramo, toca <b>+ Añadir tajo</b> y repite.',ph:[M({...E,tj:5},'tjadd','addtajo')]},
+    {c:1,t:'Registros DRP',d:'Opcional y solo en la bateadora: toca <b>Añadir archivos DRP</b> y elige los .drp que bajaste de la máquina.',ph:[M({...E,tj:5},'drp','drpadd'),M({...E,tj:5,drp:1},'drp')]},
+    {c:2,t:'Personal por puesto',d:'Elige quién ocupa cada puesto. Con EVB son obligatorios el <b>encargado</b> y el <b>OMI</b>.',ph:[M({...F,pers:0},'pers','enc'),M({...F,pers:1},'pers','omi'),M(F,'pers')]},
+    {c:2,t:'Cierra el parte',d:'Toca <b>Cerrar parte</b>, contesta lo de las horas extra y <b>Acepta</b>.',ph:[M(F,'obs','cerrar'),M({...F,over:'extras'},'obs','extno'),M({...F,over:'confirma'},'obs','aceptar')]},
+    ...mk('infra').slice(-4,-1),   // enviar, sin cobertura y corregir: son iguales en todos los partes
+  ];
+};
+/* ---------- Pasos ----------
+   Cada fase: vista y su estado (s), tarjeta hasta la que baja (to), lo que toca el dedo (hit).
+   Si dos fases seguidas son de la misma vista, la pantalla no salta: se actualiza y se desplaza. */
+const CH=['Empezar','El trabajo','Cerrar y enviar'];
+const mk=(t)=>{
+  const sup=t==='super';
+  const P0={marta:1,eq:2}, P1={...P0,trab:1}, T0={sios:1,via:'hecho'};
+  const P=(s,to,hit,extra={})=>({v:'parte',s,to,hit,...extra});
+  const T=(s,to,hit,extra={})=>({v:'trabajo',s,to,hit,...extra});
+  return [
+    {c:0,t:'Elige el tipo de parte',d:`Toca <b>${LAB[t]}</b>. Aquí irán saliendo todos tus partes.`,ph:[{v:'inicio',s:{vacio:1},hit:'tipo'}]},
+    {c:0,t:'Revisa la jornada',d:`Comprueba la <b>fecha</b>.${sup?' Si es de noche, marca «Jornada nocturna».':''}`,ph:[P({},'jornada','fecha')]},
+    {c:0,t:'Añade al personal',d:'Tú ya estás. <b>Busca y toca</b> a cada persona que ha venido.',ph:[P({busca:1},'personal','res'),P({marta:1,nuevo:'Marta López'},'personal')]},
+    {c:0,t:'Maquinaria y vehículos',d:'Contesta <b>Sí o No</b> a las dos. Con Sí, elige de la lista.',ph:[P({marta:1},'maq','maqsi'),P({marta:1,eq:1},'maq','maqsel'),P({marta:1,eq:1},'veh','vehno'),P({marta:1,eq:2},'veh')]},
+    {c:1,t:'Añade un trabajo',d:'Baja a Trabajos y toca <b>+ Añadir trabajo</b>.',ph:[P(P0,'trabajos','add')]},
+    {c:1,t:'Referencia',d:'Elige <b>SIOS</b>, Incidencia o Sin referencia y escribe el número.',ph:[T({},'ref','sios'),T({sios:1,ref:'tecleo'},'ref')]},
+    {c:1,t:'Vía y horario',d:`Horas solo con cifras: <b>2230</b> → 22:30. Luego línea, vía${sup?' (puedes marcar varias)':''} y PK.`,ph:[T({sios:1,via:'tecleo'},'via'),T(T0,'pk')]},
+    {c:1,t:'Qué se ha hecho',d:'Elige el <b>motivo</b> de la lista y di si el trabajo está <b>finalizado</b>.',ph:[T(T0,'hecho','motivo'),T(T0,'hecho','finsi'),T({...T0,fin:1},'hecho')]},
+    {c:1,t:'Haz las fotos',d:'Al menos una de <b>antes</b> y una de <b>después</b>.',ph:[T({...T0,fin:1},'fotos',null,{wait:700}),T({...T0,fin:1},'desp','camdesp'),T({...T0,fin:1,foto:1},'desp')]},
+    {c:1,t:'Pulsa Listo',d:'Si no hay más trabajos: <b>No, volver al parte</b>.',ph:[T({...T0,fin:1,foto:1},'desp','listo'),T({...T0,fin:1,foto:1,over:'otro'},'desp','volver')]},
+    {c:2,t:'Medidas antiincendios',d:'El trabajo sale con ✓ verde. Marca <b>todas</b> las medidas tomadas: es obligatorio.',ph:[P(P1,'trabajos',null,{wait:1100}),P(P1,'medidas','med0'),P({...P1,med:1},'medidas')]},
+    ...(sup?[{c:2,t:'Foto del formato 1',d:'Opcional: una foto de cada hoja del formato 1.',ph:[P({...P1,med:1},'f1','f1cam')],only:1}]:[]),
+    {c:2,t:'Cierra el parte',d:'Toca <b>Cerrar parte</b>, contesta lo de las horas extra y <b>Acepta</b>.',ph:[P({...P1,med:1},'obs','cerrar'),P({...P1,med:1,over:'extras'},'obs','extno'),P({...P1,med:1,over:'confirma'},'obs','aceptar')]},
+    {c:2,t:'Envíalo',d:'Toca <b>Enviar a la oficina</b>. En verde = entregado ✓.',ph:[{v:'envio',s:{m:'cerrado'},hit:'enviar'},{v:'envio',s:{m:'ok'}}]},
+    {c:2,t:'¿Sin cobertura?',d:'No pasa nada: se envía <b>solo</b> cuando vuelve la señal.',ph:[{v:'inicio',s:{cola:1},hit:'ahora'}]},
+    {c:2,t:'¿Algo mal? Corrígelo',d:'<b>Corregir el parte</b> crea una revisión nueva. La oficina guarda las dos.',ph:[{v:'envio',s:{m:'visto'},to:'corregir',hit:'corregir'}]},
+    {c:2,t:'La próxima vez, más rápido',d:'Desde el 2.º parte puedes <b>copiar del anterior</b> el personal, los equipos y las medidas.',ph:[{v:'inicio',s:{repetir:1},hit:'copiar'}]},
+  ];
+};
+
+/* ====== Guía completa: Instalar → Registrarse → Hacer un parte ======
+   Las guías de instalación y registro son pantallas fijas por paso (raw); las del parte son pantallas
+   largas que bajan (VIEWS). El mismo reproductor sirve para las dos. */
+const sb=t=>`<div class="sb and ${t}"><span>9:41</span><span class="sb-r">5G ${SIG}<span class="bat"></span></span></div>`;
+const T_TOQUE=1700, T_VER=800, T_BAJAR=350, T_TECLEO=1700, T_LEER=1200;
+const tecleo=f=>f.s&&(f.s.busca||f.s.tec||f.s.ref==='tecleo'||f.s.via==='tecleo');
+const durOf=st=>st.dur||st.ph.reduce((a,f)=>a+(f.hit?T_TOQUE:(f.wait||T_VER))+(f.to?T_BAJAR:0)+(tecleo(f)?T_TECLEO:0),T_LEER);
+
+const deInstalar=(g,cap)=>({...g,CH:[cap],steps:g.steps.map(x=>({c:0,t:x.t,d:x.d,dur:x.dur||DUR,ph:[{raw:x.s}]}))});
+const GUIDES={
+  iphone:{...deInstalar(GI.iphone,'Instalar en iPhone'),sub:'iPhone',subSm:'Safari',next:{to:'registro',txt:'Ahora: Registrarse'}},
+  android:{...deInstalar(GI.android,'Instalar en Android'),sub:'Android',subSm:'Chrome',next:{to:'registro',txt:'Ahora: Registrarse'}},
+  pc:{...deInstalar(GI.pc,'Instalar en el ordenador'),sub:'Ordenador',subSm:'Chrome o Edge',next:{to:'registro',txt:'Ahora: Registrarse'}},
+  registro:{...deInstalar(GI.registro,'Registrarse'),next:{to:'infra',txt:'Ahora: Hacer un parte'}},
+  infra:{device:'phone',os:'and',CH,steps:mk('infra'),sub:'Parte de INFRA',subSm:'Infraestructura',cls:'infra',next:{to:'super',txt:'Ver el parte de SUPER'}},
+  super:{device:'phone',os:'and',CH,steps:mk('super'),sub:'Parte de SUPER',subSm:'Superestructura',cls:'super',next:{to:'maq',txt:'Ver el parte de MAQUINARIA'}},
+  maq:{device:'phone',os:'and',CH,steps:mkMaq(),sub:'Maquinaria de vía',subSm:'Bateadora',cls:'maq'},
+};
+const STAGES=[
+  {k:'instalar',n:1,pre:'Primero',label:'Instalar',subs:['iphone','android','pc']},
+  {k:'registro',n:2,pre:'Después',label:'Registrarse',subs:['registro']},
+  {k:'parte',n:3,pre:'Por último',label:'Hacer un parte',subs:['infra','super','maq']},
+];
+const stageOf=k=>STAGES.find(s=>s.subs.includes(k));
+
+/* ---------- Reproductor ---------- */
+const $=id=>document.getElementById(id);
+const scr=$('scr'),zoom=$('zoom'),screen=$('screen'),tap=$('tap'),prog=$('prog'),stepsEl=$('steps'),player=$('player'),device=$('device');
+const playBtn=$('play'),prevBtn=$('prev'),nextBtn=$('next'),nextGuide=$('nextguide');
+const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+let dev=detect(),idx=0,playing=!reduce,ended=false,typeTok=0,ultimoAparato=dev in GI&&dev!=='registro'?dev:'android';
+
+function detect(){
+  const h=(location.hash||'').slice(1);
+  if(GUIDES[h]) return h;
+  if(h==='parte') return 'infra';
+  const ua=navigator.userAgent||'';
+  if(/iPhone|iPad|iPod/.test(ua)||(/Macintosh/.test(ua)&&navigator.maxTouchPoints>1)) return 'iphone';
+  if(/Android/.test(ua)) return 'android';
+  return 'pc';
+}
+
+$('tabs').innerHTML=STAGES.map(s=>`<button class="tab" type="button" role="tab" id="st-${s.k}" data-st="${s.k}"><span class="n">${s.n}</span><small>${s.pre}</small><b>${s.label}</b></button>`).join('');
+$('tabs').addEventListener('click',e=>{
+  const b=e.target.closest('.tab'); if(!b) return;
+  const s=STAGES.find(x=>x.k===b.dataset.st);
+  choose(s.k==='instalar'?ultimoAparato:s.subs[0],true);
+});
+$('subtabs').addEventListener('click',e=>{const b=e.target.closest('.chip'); if(b) choose(b.dataset.k,false);});
+
+function choose(k,scroll){
+  dev=k; idx=0; ended=false; playing=!reduce; screen.dataset.v='';
+  if(stageOf(k).k==='instalar') ultimoAparato=k;
+  render();
+  if(scroll){const t=player.getBoundingClientRect().top; if(t<0||t>innerHeight*.45) $('tabs').scrollIntoView({behavior:reduce?'auto':'smooth',block:'start'});}
+}
+const dw=()=>DW[GUIDES[dev].device];
+function fit(){
+  const W=scr.clientWidth,H=scr.clientHeight;
+  if(!W||!H) return 1;
+  const k=W/dw();
+  zoom.style.width=dw()+'px'; zoom.style.height=(H/k)+'px'; zoom.style.transform=`scale(${k})`;
+  return k;
+}
+function setPlaying(p){
+  playing=p;
+  player.classList.toggle('paused',!p);
+  const ico=ended?'<path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3M4.5 4.5v3h3"/>':p?'<path d="M8 5v14M16 5v14"/>':'<path d="M7 4.5v15l12-7.5Z" fill="currentColor"/>';
+  playBtn.innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">${ico}</svg>${ended?'Ver otra vez':p?'Pausa':'Seguir'}`;
+}
+
+/* Desplazamiento (solo pantallas largas): la tarjeta pedida queda arriba sin pasarse del final. */
+function destino(f){
+  const sc=screen.querySelector('.a-scroll'), body=screen.querySelector('.a-body');
+  if(!sc||!body||!f.to) return 0;
+  const el=sc.querySelector(`[data-c="${f.to}"]`);
+  if(!el) return 0;
+  let top=0; for(let n=el;n&&n!==sc;n=n.offsetParent) top+=n.offsetTop;
+  return Math.max(0,Math.min(top-10,Math.max(0,sc.offsetHeight-body.clientHeight)));
+}
+function ponScroll(y,suave){
+  const sc=screen.querySelector('.a-scroll'); if(!sc) return;
+  sc.style.transition=suave?'transform .7s cubic-bezier(.3,.7,.25,1)':'none';
+  sc.style.transform=`translateY(${-y}px)`;
+  sc.dataset.y=y;
+}
+/* Pinta una fase. Pantalla fija: se sustituye. Pantalla larga de la misma vista: se actualiza y baja. */
+function pinta(f){
+  if(f.raw){ screen.innerHTML=f.raw(); screen.dataset.v='raw'; return 0; }
+  const misma=screen.dataset.v===f.v;
+  const sc0=screen.querySelector('.a-scroll'), y0=misma&&sc0?+sc0.dataset.y||0:0;
+  screen.innerHTML=VIEWS[f.v](dev,f.s||{});
+  screen.dataset.v=f.v;
+  if(misma) screen.firstElementChild.classList.add('sin-fundido');
+  if(f.hit){const h=screen.querySelector(`[data-k="${f.hit}"]`); if(h) h.classList.add('hit');}
+  ponScroll(y0,false);
+  const y=destino(f);
+  if(reduce||y===y0){ponScroll(y,false);return 0;}
+  void screen.offsetHeight;
+  ponScroll(y,true);
+  return 750;
+}
+function placeTap(target){
+  const h=target||screen.querySelector('.hit');
+  if(!h){tap.hidden=true;return null;}
+  const pc=GUIDES[dev].device==='pc',z=zoom.getBoundingClientRect(),k=z.width/dw(),r=h.getBoundingClientRect();
+  const fx=pc?.5:(r.width>150*k?.76:.5),fy=pc?.55:.62;
+  tap.style.left=((r.left-z.left)+r.width*fx)/k+'px';
+  tap.style.top=((r.top-z.top)+r.height*fy)/k+'px';
+  tap.hidden=false;
+  return h;
+}
+/* Lo que pasa en la pantalla antes del toque final: copiar, pegar o teclear. */
+async function typeAll(tok){
+  const cp=screen.querySelector('[data-copy]');
+  if(cp){
+    const copied=()=>{cp.classList.add('ok');cp.textContent='¡Copiada!';const t=screen.querySelector('.ctoast');if(t)t.classList.add('show');};
+    if(reduce){copied();return;}
+    await sleep(500); if(tok!==typeTok) return;
+    placeTap(cp);
+    await sleep(1500); if(tok!==typeTok) return;
+    copied();
+    return;
+  }
+  for(const el of screen.querySelectorAll('[data-type]')){
+    const t=el.dataset.type,bubble=el.dataset.paste&&screen.querySelector('.paste');
+    if(reduce){el.textContent=t;if(bubble)bubble.remove();continue;}
+    el.textContent='';
+    if(bubble){
+      await sleep(600); if(tok!==typeTok) return;
+      placeTap(bubble);
+      await sleep(1600); if(tok!==typeTok) return;
+      bubble.remove(); el.textContent=t;
+      await sleep(300);
+      continue;
+    }
+    await sleep(350);
+    for(let i=1;i<=t.length;i++){
+      if(tok!==typeTok) return;
+      el.textContent=t.slice(0,i);
+      await sleep(Math.max(90,1300/t.length));
+    }
+    await sleep(200);
+  }
+}
+// Fases del paso: pintar (y bajar si hace falta), copiar/pegar/teclear, llevar el dedo y hundir el botón.
+async function animar(st,tok){
+  for(let i=0;i<st.ph.length;i++){
+    const f=st.ph[i];
+    const bajar=pinta(f);
+    if(screen.querySelector('[data-type],[data-copy]')) tap.hidden=true;
+    await sleep(bajar||(i===0?550:350)); if(tok!==typeTok) return;
+    await typeAll(tok); if(tok!==typeTok) return;
+    const h=placeTap();
+    if(!h){ await sleep(f.wait||450); if(tok!==typeTok) return; continue; }
+    await sleep(700); if(tok!==typeTok) return;
+    h.classList.add('pressed');
+    if(i<st.ph.length-1){ await sleep(420); if(tok!==typeTok) return; }
+  }
+}
+function render(){
+  const g=GUIDES[dev],st=g.steps[idx],n=g.steps.length,last=idx===n-1,stg=stageOf(dev);
+  device.className='device '+g.device;
+  zoom.dataset.os=g.os;
+  fit();
+  $('count').textContent=`${g.CH[st.c]} · Paso ${idx+1} de ${n}`;
+  $('stitle').innerHTML=st.t+(st.only?'<span class="tag only">solo SUPER</span>':'');
+  $('sdesc').innerHTML=st.d;
+  prog.style.setProperty('--dur',durOf(st)+'ms');
+  prog.innerHTML=g.steps.map((s,i)=>`<span class="${i<idx?'done':i===idx?'on':''}${i>0&&s.c!==g.steps[i-1].c?' ch':''}"><i></i></span>`).join('');
+  prog.querySelector('.on i').addEventListener('animationend',()=>{ if(idx<n-1){idx++;render();} else {ended=true;setPlaying(false);} });
+  let cAnt=-1;
+  stepsEl.innerHTML=g.steps.map((s,i)=>{const cab=g.CH.length>1&&s.c!==cAnt?`<li class="chh">${g.CH[s.c]}</li>`:''; cAnt=s.c;
+    return `${cab}<li class="${i<idx?'done':i===idx?'on':''}"><button type="button" data-i="${i}"><span class="n">${i+1}</span><span>${s.t}${s.only?'<span class="tag only">solo SUPER</span>':''}</span></button></li>`;}).join('');
+  STAGES.forEach(s=>$('st-'+s.k).setAttribute('aria-selected',String(s===stg)));
+  const subs=stg.subs.length>1?stg.subs:[];
+  $('subtabs').hidden=!subs.length;
+  $('subtabs').innerHTML=subs.map(k=>`<button class="chip ${GUIDES[k].cls||''}" type="button" data-k="${k}" aria-selected="${k===dev}">${GUIDES[k].sub}<small>${GUIDES[k].subSm}</small></button>`).join('');
+  prevBtn.disabled=idx===0; nextBtn.disabled=last;
+  nextGuide.hidden=!(last&&g.next);
+  if(g.next) nextGuide.firstChild.textContent=g.next.txt;
+  setPlaying(playing);
+  tap.className='tap'+(g.device==='pc'?' cursor':''); tap.innerHTML=g.device==='pc'?CURSOR:HAND;
+  const tok=++typeTok;
+  // Con movimiento reducido se enseña directamente la última fase del paso.
+  if(reduce){pinta(st.ph[st.ph.length-1]);typeAll(tok).then(()=>placeTap());}
+  else animar(st,tok);
+}
+stepsEl.addEventListener('click',e=>{const b=e.target.closest('button'); if(b){idx=+b.dataset.i;ended=false;render();}});
+prevBtn.addEventListener('click',()=>{if(idx>0){idx--;ended=false;render();}});
+nextBtn.addEventListener('click',()=>{if(idx<GUIDES[dev].steps.length-1){idx++;ended=false;render();}});
+playBtn.addEventListener('click',()=>{ if(ended){ended=false;idx=0;playing=true;render();return;} setPlaying(!playing); });
+nextGuide.addEventListener('click',()=>{const g=GUIDES[dev]; if(g.next) choose(g.next.to,true);});
+addEventListener('keydown',e=>{
+  if(e.target.closest('input,textarea,summary')) return;
+  if(e.key==='ArrowRight') nextBtn.click();
+  else if(e.key==='ArrowLeft') prevBtn.click();
+});
+addEventListener('resize',()=>{fit();placeTap();});
+if(document.fonts&&document.fonts.ready) document.fonts.ready.then(()=>{fit();placeTap();});
+
+$('copy').addEventListener('click',()=>{
+  const btn=$('copy'),lbl=$('copytxt'),txt='https://'+URL_APP+'/';
+  const done=()=>{lbl.textContent='¡Copiada!';btn.classList.add('ok');setTimeout(()=>{lbl.textContent='Copiar';btn.classList.remove('ok');},2200);};
+  const fallback=()=>{const r=document.createRange();r.selectNodeContents($('u'));const s=getSelection();s.removeAllRanges();s.addRange(r);lbl.textContent='Mantén pulsado y copia';};
+  try{navigator.clipboard.writeText(txt).then(done,fallback);}catch(e){fallback();}
+});
+
+render();
+</script>
+</body>
+</html>

@@ -1,6 +1,8 @@
 // PDF A4 apaisado con el aspecto del parte en papel. Se genera en el móvil con jsPDF.
 
-import { fmtFecha, fmtFechaHora, FORMATO1 } from './util.js';
+import { fmtFecha, fmtFechaHora, fmtNum, FORMATO1 } from './util.js';
+import { puestosDe, listaAparatos, mismoNombre } from './validaciones.js';
+import { calculosHerbicida, medioCaso, m2Caso, llevaAnexoFotos, NOMBRE_MEDIO } from './modelo.js';
 
 const PT = 0.3528;              // 1 punto tipográfico en mm
 const M = 8;                    // margen
@@ -70,7 +72,10 @@ function seccion(c, titulo, reserva = 14) {
   c.y += 6;
 }
 
-/** Tabla con cabecera que se repite al saltar de página. cols: [{ t, w, a }]. */
+/**
+ * Tabla con cabecera que se repite al saltar de página. cols: [{ t, w, a }]. Cada celda es un texto
+ * o { t, color, s } para escribirla en otro color (p. ej. los avisos en rojo para la oficina) o tamaño.
+ */
 function tabla(c, cols, filas, { s = 7.5, vacio = '' } = {}) {
   const cab = () => fila(c, cols.map((col) => ({ w: col.w, t: col.t, fill: GRIS, b: true, s: 6.5, a: 'center' })), { minH: 6 });
   if (c.y + 14 > FONDO) nuevaPagina(c);
@@ -80,7 +85,10 @@ function tabla(c, cols, filas, { s = 7.5, vacio = '' } = {}) {
     return;
   }
   for (const f of filas) {
-    const celdas = cols.map((col, i) => ({ w: col.w, t: f[i], s, a: col.a || 'left' }));
+    const celdas = cols.map((col, i) => {
+      const v = f[i] && typeof f[i] === 'object' ? f[i] : { t: f[i] };
+      return { w: col.w, t: v.t, s: v.s || s, a: col.a || 'left', color: v.color };
+    });
     if (c.y + altoFila(c.doc, celdas) > FONDO) { nuevaPagina(c); cab(); }
     fila(c, celdas, { valign: 'top' });
   }
@@ -105,10 +113,24 @@ function contarFotos(t) {
     `${sinFecha ? `\n${sinFecha} sin fecha original` : ''}`;
 }
 
-const FASE_TXT = { antes: 'ANTES', durante: 'DURANTE', despues: 'DESPUÉS' };
+/**
+ * Descripción del trabajo en la tabla: lo escrito, el motivo si no se ha realizado y las fotos.
+ * Sin fotos posibles, la celda va en rojo para que la oficina lo vea.
+ */
+function descripcionTrabajo(t) {
+  const sinFotos = !t.noRealizado && t.sinFotos;
+  const aviso = sinFotos ? `SIN FOTOS: ${t.motivoSinFotos || ''}` : t.noRealizado ? `No realizado: ${t.motivoNoRealizado || ''}` : null;
+  // Sin aviso queda como siempre: la descripción (aunque esté vacía) y debajo las fotos.
+  const texto = aviso
+    ? [aviso, (t.descripcion || '').trim(), contarFotos(t)].filter(Boolean).join('\n')
+    : `${t.descripcion || ''}\n${contarFotos(t)}`;
+  return sinFotos ? { t: texto, color: [170, 0, 0] } : texto;
+}
+
+const FASE_TXT ={ antes: 'ANTES', durante: 'DURANTE', despues: 'DESPUÉS' };
 
 /** Reduce la foto para el anexo del PDF (las originales van aparte, a tamaño completo). */
-async function reducir(blob, lado = 1100, calidad = 0.72) {
+async function reducir(blob, lado = 900, calidad = 0.65) {
   const bmp = await createImageBitmap(blob);
   const k = Math.min(1, lado / Math.max(bmp.width, bmp.height));
   const w = Math.round(bmp.width * k);
@@ -143,7 +165,7 @@ async function anexoFormato(c, parte, leerFoto) {
 }
 
 /** Dos fotos por página, con el título del anexo y un pie por foto. */
-async function paginasFotos(c, parte, leerFoto, lista, nombreAnexo, textoPie, lado = 1100, calidad = 0.72) {
+async function paginasFotos(c, parte, leerFoto, lista, nombreAnexo, textoPie, lado = 900, calidad = 0.65) {
   if (!lista.length) return;
   const { doc } = c;
   const hueco = 6;
@@ -209,6 +231,13 @@ export async function generarPDF(parte, config, versionApp = '', leerFoto = null
     pdfPie(c, parte, versionApp);
     return doc.output('blob');
   }
+  // HERBICIDA: como su papel. Sin anexo de fotos (llevaAnexoFotos): van sueltas en la carpeta del parte.
+  if (parte.tipo === 'HERBICIDA') {
+    cuerpoHerbicida(c, parte, cab);
+    if (leerFoto && llevaAnexoFotos(parte)) await anexoFotos(c, parte, leerFoto);
+    pdfPie(c, parte, versionApp);
+    return doc.output('blob');
+  }
 
   // Título
   fila(c, [
@@ -230,14 +259,7 @@ export async function generarPDF(parte, config, versionApp = '', leerFoto = null
     { ...L, w: 40, t: 'HORA DE CIERRE (MÓVIL)' }, { w: AN - 199, t: fmtFechaHora(parte.cierre) || '—', b: true },
   ], { minH: 8 });
 
-  if (parte.rectificaA) {
-    c.y += 1.5;
-    fila(c, [{
-      w: AN, b: true, s: 8.5, color: [170, 0, 0],
-      t: `PARTE RECTIFICATIVO: sustituye a la revisión ${parte.rectificaA.rev} de este parte` +
-        `${parte.rectificaA.cierre ? ` (cerrada el ${fmtFechaHora(parte.rectificaA.cierre)})` : ''}.`,
-    }], { minH: 7 });
-  }
+  avisoRectificativo(c, parte);
 
   // Personal
   seccion(c, `PERSONAL (${parte.personal.length})`);
@@ -253,6 +275,13 @@ export async function generarPDF(parte, config, versionApp = '', leerFoto = null
     c.y += 4;
   }
 
+  // Jornada en la que no se pudo trabajar: sin trabajos, maquinaria ni medidas, solo el motivo.
+  if (parte.sinTrabajos) {
+    seccionSinTrabajos(c, parte);
+    pdfPie(c, parte, versionApp);
+    return doc.output('blob');
+  }
+
   pdfHorasExtra(c, parte);
 
   // Trabajos
@@ -260,15 +289,17 @@ export async function generarPDF(parte, config, versionApp = '', leerFoto = null
   // Solo INFRA lleva la columna RREE/POI (trabajos de coste directo, que se facturan aparte).
   const conCoste = parte.tipo === 'INFRA';
   const ANCHO_COSTE = 14;
+  // SUPER admite varias vías («1, 2, 3»): la columna es algo más ancha. INFRA, una sola, como siempre.
+  const ANCHO_VIA = parte.tipo === 'SUPER' ? 14 : 9;
   tabla(c, [
     { t: 'Nº', w: 7, a: 'center' }, { t: 'REFERENCIA', w: 30 },
     ...(conCoste ? [{ t: 'RREE /\nPOI', w: ANCHO_COSTE, a: 'center' }] : []),
     { t: 'Nº PIDAME', w: 18 },
     { t: 'TELEFONEMAS', w: 20 }, { t: 'ENTRADA\nVÍA', w: 15, a: 'center' }, { t: 'SALIDA\nVÍA', w: 13, a: 'center' },
-    { t: 'LÍNEA', w: 11, a: 'center' }, { t: 'VÍA', w: 9, a: 'center' }, { t: 'APARATO', w: 16 },
+    { t: 'LÍNEA', w: 11, a: 'center' }, { t: 'VÍA', w: ANCHO_VIA, a: 'center' }, { t: 'APARATO', w: 16 },
     { t: 'P.K. INICIO', w: 16, a: 'center' },
     { t: 'P.K. FIN', w: 16, a: 'center' }, { t: 'M. LIN', w: 11, a: 'center' }, { t: 'MOTIVO ACTUACIÓN', w: 26 },
-    { t: '¿FIN?', w: 10, a: 'center' }, { t: 'DESCRIPCIÓN', w: AN - 218 - (conCoste ? ANCHO_COSTE : 0) },
+    { t: '¿FIN?', w: 17, a: 'center' }, { t: 'DESCRIPCIÓN', w: AN - 216 - ANCHO_VIA - (conCoste ? ANCHO_COSTE : 0) },
   ], parte.trabajos.map((t, i) => [
     String(i + 1),
     textoReferencia(t),
@@ -280,13 +311,13 @@ export async function generarPDF(parte, config, versionApp = '', leerFoto = null
     t.sinVia ? (t.horaFin ? `Fin\n${t.horaFin}` : '-') : t.salidaVia,
     t.linea,
     t.sinVia && !t.via ? '-' : t.via,
-    t.aparato || '',
+    listaAparatos(t.aparato).join('\n'),   // uno por línea
     t.pkInicio,
     t.pkFin,
     t.metrosLineales == null ? '' : String(t.metrosLineales),
     t.motivoActuacion,
-    t.finalizado === true ? 'SÍ' : t.finalizado === false ? 'NO' : '',
-    `${t.descripcion || ''}\n${contarFotos(t)}`,
+    t.noRealizado ? { t: 'NO\nREALIZADO', s: 6.5 } : t.finalizado === true ? 'SÍ' : t.finalizado === false ? 'NO' : '',
+    descripcionTrabajo(t),
   ]), { vacio: 'Sin trabajos' });
 
   // Maquinaria y vehículos (los partes de antes de v0.6.0 los llevan juntos en una tabla)
@@ -315,13 +346,34 @@ export async function generarPDF(parte, config, versionApp = '', leerFoto = null
     fila(c, [{ w: AN, t: parte.observaciones, s: 8 }], { minH: 9, valign: 'top' });
   }
 
-  if (leerFoto) {
+  if (leerFoto && llevaAnexoFotos(parte)) {
     await anexoFotos(c, parte, leerFoto);
     if (parte.tipo === 'SUPER') await anexoFormato(c, parte, leerFoto);
   }
 
   pdfPie(c, parte, versionApp);
   return doc.output('blob');
+}
+
+/** Parte rectificativo: una línea en rojo debajo de la cabecera. */
+function avisoRectificativo(c, parte) {
+  if (!parte.rectificaA) return;
+  c.y += 1.5;
+  fila(c, [{
+    w: AN, b: true, s: 8.5, color: [170, 0, 0],
+    t: `PARTE RECTIFICATIVO: sustituye a la revisión ${parte.rectificaA.rev} de este parte` +
+      `${parte.rectificaA.cierre ? ` (cerrada el ${fmtFechaHora(parte.rectificaA.cierre)})` : ''}.`,
+  }], { minH: 7 });
+}
+
+/** Jornada en la que no se pudo trabajar: una sección con el motivo, en rojo, y las observaciones. */
+function seccionSinTrabajos(c, parte) {
+  seccion(c, 'JORNADA SIN TRABAJOS');
+  fila(c, [{ w: AN, t: `No se ha podido trabajar: ${parte.motivoSinTrabajos || ''}`, b: true, s: 10, color: [170, 0, 0] }], { minH: 12 });
+  if ((parte.observaciones || '').trim()) {
+    seccion(c, 'OBSERVACIONES');
+    fila(c, [{ w: AN, t: parte.observaciones, s: 8 }], { minH: 9, valign: 'top' });
+  }
 }
 
 /** Horas extra del parte (desde v0.8.0): tabla y total por tipo. */
@@ -431,7 +483,8 @@ function cuerpoLocoDresina(c, parte, cab) {
   fila(c, [
     { ...L, w: 22, t: 'ÁMBITO' }, { w: 45, t: cab.ambito || '', b: true },
     { ...L, w: 22, t: 'Nº ACTA' }, { w: 40, t: parte.acta || '', b: true },
-    { ...L, w: 22, t: 'LO RELLENA' }, { w: 70, t: parte.capataz, b: true },
+    { ...L, w: 22, t: 'LO RELLENA' }, { w: loco ? 70 : 50, t: parte.capataz, b: true },
+    ...(loco ? [] : [{ ...L, w: 10, t: 'EVB' }, { w: 10, t: SI_NO(parte.evb), b: true, a: 'center' }]),
     { ...L, w: 30, t: 'CIERRE (MÓVIL)' }, { w: AN - 251, t: fmtFechaHora(parte.cierre) || '—', b: true },
   ], { minH: 8 });
   fila(c, [
@@ -447,6 +500,13 @@ function cuerpoLocoDresina(c, parte, cab) {
       t: `PARTE RECTIFICATIVO: sustituye a la revisión ${parte.rectificaA.rev} de este parte` +
         `${parte.rectificaA.cierre ? ` (cerrada el ${fmtFechaHora(parte.rectificaA.cierre)})` : ''}.`,
     }], { minH: 7 });
+  }
+
+  // Jornada sin trabajos (p. ej. avería de la máquina): solo el motivo y quién estaba.
+  if (parte.sinTrabajos) {
+    seccionSinTrabajos(c, parte);
+    tablaPersonalPuestos(c, parte, puestosDe(parte));
+    return;
   }
 
   if (!loco) {
@@ -505,9 +565,7 @@ function cuerpoLocoDresina(c, parte, cab) {
     { ...L, w: 35, t: 'KM LLEGADA' }, { w: AN - 245, t: num(parte.km.llegada), b: true, a: 'center' },
   ], { minH: 8 });
 
-  tablaPersonalPuestos(c, parte, loco
-    ? [['maquinista', 'Maquinista'], ['responsable', 'Responsable de trabajos'], ['operario', 'Operario/s']]
-    : [['maquinista', 'Maquinista'], ['amparo', 'ET / al amparo de'], ['operario', 'Operario/s']]);
+  tablaPersonalPuestos(c, parte, puestosDe(parte));
   pdfHorasExtra(c, parte);
 }
 
@@ -517,11 +575,12 @@ function cuerpoMaquinaria(c, parte, cab) {
   fila(c, [
     { w: 52, t: `Ref. ${parte.ref}${parte.rev > 1 ? `   ·   Rev. ${parte.rev}` : ''}`, b: true, s: 9 },
     { w: AN - 104, t: 'PARTE DE MAQUINARIA', b: true, s: 14, a: 'center' },
-    { w: 52, t: `Fecha ${fmtFecha(parte.fecha)}\nHorario ${parte.horaInicio || '--:--'} - ${parte.horaFin || '--:--'}`, b: true, s: 9, a: 'center' },
+    { w: 52, t: `Fecha ${fmtFecha(parte.fecha)}${parte.sinTrabajos ? '' : `\nHorario ${parte.horaInicio || '--:--'} - ${parte.horaFin || '--:--'}`}`, b: true, s: 9, a: 'center' },
   ], { minH: 13 });
   fila(c, [
     { ...L, w: 22, t: 'EMPRESA' }, { w: 70, t: cab.empresa || '', b: true },
-    { ...L, w: 22, t: 'LO RELLENA' }, { w: 70, t: parte.capataz, b: true },
+    { ...L, w: 22, t: 'LO RELLENA' }, { w: 50, t: parte.capataz, b: true },
+    { ...L, w: 10, t: 'EVB' }, { w: 10, t: SI_NO(parte.evb), b: true, a: 'center' },
     { ...L, w: 40, t: 'HORA DE CIERRE (MÓVIL)' }, { w: AN - 224, t: fmtFechaHora(parte.cierre) || '—', b: true },
   ], { minH: 8 });
 
@@ -542,6 +601,13 @@ function cuerpoMaquinaria(c, parte, cab) {
   ], maquinas.map((m, i) => [String(i + 1), m.descripcion, m.uic || '', m.trabajo || '', String(m.horas || '').replace('.', ',')]),
   { vacio: 'Sin máquinas' });
 
+  if (parte.sinTrabajos) {
+    // Jornada sin trabajos (p. ej. avería): máquina, motivo y personal; sin viaje ni tajos.
+    seccionSinTrabajos(c, parte);
+    tablaPersonalPuestos(c, parte, puestosDe(parte));
+    return;
+  }
+
   const v = parte.viaje || {};
   seccion(c, 'VIAJE');
   fila(c, [
@@ -553,10 +619,10 @@ function cuerpoMaquinaria(c, parte, cab) {
 
   const tajos = parte.tajos || [];
   seccion(c, `TAJOS (${tajos.length})`, 20);
-  const op = (AN - 141) / 5;
+  const op = (AN - 144) / 5;
   tabla(c, [
     { t: 'Nº', w: 7, a: 'center' }, { t: 'LLEGADA\nTAJO', w: 15, a: 'center' }, { t: 'INICIO\nTRABAJO', w: 15, a: 'center' },
-    { t: 'FIN\nTRABAJO', w: 15, a: 'center' }, { t: 'SALIDA\nTAJO', w: 15, a: 'center' }, { t: 'VÍA', w: 9, a: 'center' },
+    { t: 'FIN\nTRABAJO', w: 15, a: 'center' }, { t: 'SALIDA\nTAJO', w: 15, a: 'center' }, { t: 'VÍA', w: 12, a: 'center' },
     { t: 'P.K. INICIO', w: 17, a: 'center' }, { t: 'P.K. FINAL', w: 17, a: 'center' }, { t: 'DESVÍO / AD', w: 31 },
     { t: 'NIVELADO', w: op }, { t: 'ALINEADO', w: op }, { t: 'ESTABILIZ.', w: op }, { t: 'REGISTRO', w: op }, { t: 'PERFILADO', w: op },
   ], tajos.map((t, i) => [
@@ -587,4 +653,125 @@ function cuerpoMaquinaria(c, parte, cab) {
   }
 
   pdfHorasExtra(c, parte);
+}
+
+// ---------- Parte HERBICIDA (como «PARTE HERBICIDA» en papel) ----------
+
+const ROJO = [170, 0, 0];
+
+function cuerpoHerbicida(c, parte, cab) {
+  const { doc } = c;
+  const L = { fill: GRIS, b: true, s: 7 };
+  fila(c, [
+    { w: 52, t: `Ref. ${parte.ref}${parte.rev > 1 ? `   ·   Rev. ${parte.rev}` : ''}`, b: true, s: 9 },
+    { w: AN - 104, t: 'PARTE HERBICIDA', b: true, s: 14, a: 'center' },
+    { w: 52, t: `Fecha de la jornada\n${fmtFecha(parte.fecha)}`, b: true, s: 9, a: 'center' },
+  ], { minH: 13 });
+  fila(c, [
+    { ...L, w: 24, t: 'ENCARGADO' }, { w: 80, t: parte.capataz, b: true },
+    { ...L, w: 18, t: 'EMPRESA' }, { w: 55, t: cab.empresa || '', b: true },
+    { ...L, w: 17, t: 'ÁMBITO' }, { w: AN - 194, t: cab.ambito || '', b: true },
+  ], { minH: 8 });
+  avisoRectificativo(c, parte);
+
+  // Personal: el capataz es el aplicador cualificado (va primero); los demás, básicos autorizados.
+  const gente = [...parte.personal].sort((a, b) => Number(mismoNombre(b.nombre, parte.capataz)) - Number(mismoNombre(a.nombre, parte.capataz)));
+  seccion(c, `PERSONAL (${gente.length})`);
+  tabla(c, [
+    { t: 'PERSONAL', w: 26 }, { t: 'NOMBRE Y APELLIDOS', w: 85 }, { t: 'EMPRESA', w: 60 },
+    { t: 'ET / PSH', w: 24, a: 'center' }, { t: 'CATEGORÍA', w: 40 }, { t: 'HABILITACIÓN', w: AN - 235 },
+  ], gente.map((x) => [mismoNombre(x.nombre, parte.capataz) ? 'Cualificado' : 'Básico', x.nombre + (x.otro ? ' *' : ''),
+    x.empresa, '', x.categoria, x.habilitacion]), { vacio: 'Sin personal' });
+  if (gente.some((x) => x.otro)) {
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(6.5);
+    doc.text('* Añadido por el capataz: no está en la lista de la oficina.', M, c.y + 1, { baseline: 'top' });
+    c.y += 4;
+  }
+
+  if (parte.sinTrabajos) { seccionSinTrabajos(c, parte); return; }
+  pdfHorasExtra(c, parte);
+
+  // Ocupaciones de vía: una fila por acta, o la jornada sin ocupar la vía con sus horas.
+  const ocs = parte.sinOcupacion ? [] : (parte.ocupaciones || []);
+  seccion(c, `OCUPACIONES DE VÍA (${ocs.length})`);
+  if (parte.sinOcupacion) {
+    fila(c, [{ w: AN, b: true, s: 8, t: `Hoy no se ha ocupado la vía.   Hora de inicio: ${parte.horaInicio || '-'}   ·   Hora de fin: ${parte.horaFin || '-'}` }], { minH: 7 });
+  } else {
+    tabla(c, [
+      { t: 'Nº ACTA', w: 40 }, { t: 'Nº TELEF.', w: 40 }, { t: 'HORA\nENTRADA', w: 26, a: 'center' }, { t: 'HORA\nSALIDA', w: 26, a: 'center' },
+      { t: 'LÍNEA', w: 22, a: 'center' }, { t: 'VÍA', w: 30, a: 'center' }, { t: 'PK INICIO', w: 35, a: 'center' },
+      { t: 'PK FINAL', w: 35, a: 'center' }, { t: '¿FIN?', w: AN - 254, a: 'center' },
+    ], ocs.map((o) => [o.acta, o.telefonema, o.entrada, o.salida, o.linea, o.via, o.pkInicio, o.pkFin, SI_NO(o.terminada)]),
+    { vacio: 'Sin ocupaciones' });
+  }
+
+  // Cómo se ha regado
+  const k = calculosHerbicida(parte);
+  const maq = parte.maquinaHer && parte.maquinaHer.descripcion ? ` (${parte.maquinaHer.descripcion})` : '';
+  seccion(c, 'CÓMO SE HA REGADO');
+  fila(c, [{ w: AN, s: 8, b: true, t: [parte.usaMochila && 'Mochila', parte.usaMaquina && `Máquina${maq}`].filter(Boolean).join('   ·   ') || '-' }], { minH: 7 });
+
+  // Casos SIOS: dos casos por fila, como las dos columnas del papel.
+  const casos = parte.trabajos || [];
+  seccion(c, `CASOS SIOS REGADOS (${casos.length})`, 20);
+  const mitad = AN / 2;
+  const cols = [['Nº', 8, 'center'], ['LÍNEA', 13, 'center'], ['CASO SIOS', 22, 'left'], ['P.K.', 37, 'center'], ['MEDIO', 18, 'center'], ['SUPERFICIE M²', mitad - 98, 'right']];
+  const cabCasos = () => fila(c, [...cols, ...cols].map(([t, w]) => ({ w, t, fill: GRIS, b: true, s: 6.5, a: 'center' })), { minH: 6 });
+  const celdas = (t, i) => {
+    if (!t) return cols.map(([, w]) => ({ w, t: '' }));
+    const m2 = t.parcial ? `${fmtNum(m2Caso(t))} de ${fmtNum(t.superficie)}\n(solo una parte)` : fmtNum(m2Caso(t));
+    const pk = [t.pkInicio, t.pkFin].filter(Boolean).join(' - ');
+    return [String(i + 1), t.linea, (t.referencia && t.referencia.codigo) || '', pk, NOMBRE_MEDIO[medioCaso(parte, t)] || '-', m2]
+      .map((v, j) => ({ w: cols[j][1], t: v, s: 7.5, a: cols[j][2], color: t.sinFotos ? ROJO : undefined }));
+  };
+  if (c.y + 14 > FONDO) nuevaPagina(c);
+  cabCasos();
+  if (!casos.length) fila(c, [{ w: AN, t: 'Sin casos', s: 7.5, color: [90, 90, 90] }]);
+  for (let i = 0; i < casos.length; i += 2) {
+    const f = [...celdas(casos[i], i), ...celdas(casos[i + 1], i + 1)];
+    if (c.y + altoFila(doc, f) > FONDO) { nuevaPagina(c); cabCasos(); }
+    fila(c, f, { valign: 'top' });
+  }
+  // Superficie total y m² por medio (solo los medios usados).
+  const medios = Object.entries(k.porMedio).filter(([, v]) => v).map(([m, v]) => `${NOMBRE_MEDIO[m]}: ${fmtNum(v)} m²`);
+  fila(c, [
+    { ...L, w: 40, t: 'SUPERFICIE TOTAL' }, { w: 50, t: `${fmtNum(k.m2)} m² (${fmtNum(k.ha)} ha)`, b: true },
+    { ...L, w: 30, t: 'M² POR MEDIO' }, { w: AN - 120, t: medios.join('   ·   ') || '-', b: true },
+  ], { minH: 7 });
+  const sinFotos = casos.map((t, i) => ({ t, i })).filter(({ t }) => t.sinFotos);
+  if (sinFotos.length) {
+    fila(c, [{ w: AN, s: 7.5, b: true, color: ROJO,
+      t: `SIN FOTOS: ${sinFotos.map(({ t, i }) => `caso ${i + 1} (SIOS ${(t.referencia && t.referencia.codigo) || ''}): ${t.motivoSinFotos || ''}`).join('; ')}` }], { minH: 7 });
+  }
+
+  seccion(c, 'MEDIDAS PREVENTIVAS ANTIINCENDIOS');
+  fila(c, [{ w: AN, t: parte.antiincendios || '', s: 8 }], { minH: 9, valign: 'top' });
+
+  // Producto y caldo: lo que escribe el aplicador (dosis y caldo) y lo que calcula la app.
+  seccion(c, 'PRODUCTO Y CALDO', 24);
+  tabla(c, [
+    { t: 'PRODUCTO', w: 130 }, { t: 'DOSIS / LITRO\n(ml/L)', w: 45, a: 'center' }, { t: 'PRODUCTO TOTAL\nUTILIZADO (L)', w: 53, a: 'center' },
+    { t: 'PRODUCTO /\nHECTÁREA (L/ha)', w: AN - 228, a: 'center' },
+  ], k.productos.map((x) => [x.nombre, fmtNum(x.dosis), fmtNum(x.total), fmtNum(x.porHa)]), { vacio: 'Sin producto' });
+  fila(c, [
+    { ...L, w: 40, t: 'CALDO TOTAL UTILIZADO' }, { w: 35, t: `${fmtNum(k.caldo)} L`, b: true, a: 'center' },
+    { ...L, w: 40, t: 'CALDO / HECTÁREA' }, { w: 40, t: `${fmtNum(k.caldoHa)} L/ha`, b: true, a: 'center' },
+    { w: AN - 155, s: 7.5, b: true, color: parte.confirmaCantidades ? undefined : ROJO,
+      t: parte.confirmaCantidades ? 'El aplicador confirma que son las cantidades reales.' : 'SIN CONFIRMAR que son las cantidades reales.' },
+  ], { minH: 8 });
+  fila(c, [
+    { ...L, w: 55, t: 'APLICADOR CUALIFICADO' }, { w: 100, t: parte.capataz, b: true },
+    { w: AN - 155, s: 7, color: [90, 90, 90], t: `Firmado al cerrar el parte en el móvil: ${fmtFechaHora(parte.cierre) || '-'}` },
+  ], { minH: 8 });
+
+  if ((parte.observaciones || '').trim()) {
+    seccion(c, 'OBSERVACIONES');
+    fila(c, [{ w: AN, t: parte.observaciones, s: 8 }], { minH: 9, valign: 'top' });
+  }
+
+  // Sin anexo: las fotos van sueltas, con el nº SIOS en el nombre, en la carpeta del parte.
+  const nFotos = casos.reduce((n, t) => n + (t.fotos || []).length, 0);
+  c.y += 2;
+  fila(c, [{ w: AN, s: 8, b: true, t: `${nFotos} foto${nFotos === 1 ? '' : 's'} en la carpeta del parte (con el nº SIOS en el nombre de cada una).` }], { minH: 7 });
 }

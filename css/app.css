@@ -13,6 +13,7 @@
   --infra: #c2410c;
   --super: #1d4ed8;
   --maq: #4d7c0f;
+  --her: #0f766e;
   --ok: #157a3a;
   --ok-fondo: #e3f5e9;
   --pendiente-fondo: #fff4d6;
@@ -24,8 +25,10 @@
   color-scheme: light;
 }
 
+/* Tema oscuro: con el móvil en oscuro (salvo que se haya elegido «Claro» en el Menú) o si se ha
+   elegido «Oscuro». Son dos copias del mismo bloque: CSS no deja unir una media query con un atributo. */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-tema="claro"]) {
     --fondo: #0b0f19;
     --superficie: #151b29;
     --superficie-2: #1b2234;
@@ -37,6 +40,7 @@
     --infra: #e0601c;
     --super: #3b6fe8;
     --maq: #65a30d;
+    --her: #0d9488;
     --ok: #4ade80;
     --ok-fondo: #12301d;
     --pendiente-fondo: #3a2c06;
@@ -47,14 +51,38 @@
     color-scheme: dark;
   }
 }
+:root[data-tema="oscuro"] {
+  --fondo: #0b0f19;
+  --superficie: #151b29;
+  --superficie-2: #1b2234;
+  --texto: #e8ebf1;
+  --suave: #a1a9b8;
+  --borde: #2f3850;
+  --primario: #2a3f73;
+  --acento: #6b9cff;
+  --infra: #e0601c;
+  --super: #3b6fe8;
+  --maq: #65a30d;
+  --her: #0d9488;
+  --ok: #4ade80;
+  --ok-fondo: #12301d;
+  --pendiente-fondo: #3a2c06;
+  --peligro: #ff8a7a;
+  --aviso-fondo: #3a2c06;
+  --aviso-txt: #ffe08a;
+  --sombra: none;
+  color-scheme: dark;
+}
 
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
+/* Letra grande (Menú → Aspecto): casi todo está en rem, así que basta con subir la base. */
+html[data-letra="grande"] { font-size: 120%; }
 body {
   margin: 0;
   background: var(--fondo);
   color: var(--texto);
-  font: 17px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font: 1.0625rem/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   -webkit-tap-highlight-color: transparent;
 }
 body.sin-scroll { overflow: hidden; }
@@ -95,6 +123,8 @@ small { color: var(--suave); }
 .sub-tarjeta { background: var(--superficie-2); border: 1px solid var(--borde); border-radius: 12px; padding: 14px; margin-top: 12px; }
 .aviso { background: var(--aviso-fondo); color: var(--aviso-txt); border-radius: 12px; padding: 12px 14px; margin-bottom: 14px; font-weight: 600; }
 .nota { font-size: .9rem; color: var(--suave); }
+.hoja .pasos { padding-left: 1.4em; margin: 10px 0; }
+.hoja .pasos li { margin: 8px 0; font-size: 1.05rem; }
 .error { color: var(--peligro); font-weight: 600; }
 .vacio { color: var(--suave); text-align: center; padding: 14px 0; }
 .contador { background: var(--superficie-2); border: 1px solid var(--borde); border-radius: 999px; padding: 0 10px; font-size: .85rem; }
@@ -166,6 +196,12 @@ a.btn { display: flex; align-items: center; justify-content: center; text-decora
   padding: 12px 14px; margin-bottom: 10px; font: inherit; color: var(--texto); cursor: pointer;
 }
 .item-parte.cerrado { border-color: var(--infra); background: var(--pendiente-fondo); }
+.fila-parte { display: flex; align-items: stretch; gap: 8px; margin-bottom: 10px; }
+.fila-parte .item { margin-bottom: 0; flex: 1; width: auto; min-width: 0; }
+.papelera {
+  flex: none; width: 56px; font-size: 1.5rem; cursor: pointer; color: var(--peligro);
+  background: var(--superficie); border: 1.5px solid var(--borde); border-radius: 12px;
+}
 .item-info { flex: 1; min-width: 0; }
 .flecha { font-size: 1.6rem; color: var(--suave); }
 .etiqueta { color: #fff; font-weight: 800; font-size: .8rem; border-radius: 8px; padding: 6px 8px; }
@@ -211,6 +247,8 @@ a.btn { display: flex; align-items: center; justify-content: center; text-decora
 .miniaturas { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px; margin-top: 10px; }
 .mini-foto { padding: 0; border: 1.5px solid var(--borde); border-radius: 10px; overflow: hidden; background: var(--superficie-2); aspect-ratio: 1; cursor: pointer; }
 .mini-foto img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.mini-foto.mini-mas { display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.3rem; color: var(--suave); cursor: default; }
+.hoja .miniaturas { grid-template-columns: repeat(auto-fill, minmax(56px, 1fr)); margin-bottom: 12px; }
 .foto-grande { width: 100%; max-height: 65vh; object-fit: contain; display: block; border-radius: 8px; background: #000; }
 
 /* Envío */
@@ -236,6 +274,8 @@ a.btn { display: flex; align-items: center; justify-content: center; text-decora
   width: 100%; max-width: 720px; max-height: 88vh; overflow: auto; background: var(--superficie);
   border-radius: 18px 18px 0 0; padding: 18px 16px calc(18px + env(safe-area-inset-bottom));
 }
+.hoja .aspecto { margin: 6px 0 12px; }
+.hoja .aspecto h3 { margin-bottom: 4px; }
 .hoja.pequena { max-width: 320px; border-radius: 16px; text-align: center; padding: 24px; }
 .girando {
   width: 42px; height: 42px; margin: 0 auto 12px; border-radius: 50%;
@@ -278,6 +318,15 @@ input.mal { border-color: var(--peligro); outline: 2px solid color-mix(in srgb, 
 .btn-tipo.maquinaria .tipo-grande { font-size: 1.5rem; }
 .barra.maquinaria { background: var(--maq); }
 .etiqueta.maquinaria { background: var(--maq); }
+
+/* Parte de herbicida (campaña) */
+.btn-tipo.herbicida { background: var(--her); grid-column: 1 / -1; min-height: 84px; }
+.btn-tipo.herbicida .tipo-grande { font-size: 1.5rem; }
+.barra.herbicida { background: var(--her); }
+.etiqueta.herbicida { background: var(--her); }
+.calculos { background: var(--superficie-2); border: 1px solid var(--borde); border-radius: 12px; padding: 10px 14px; margin: 12px 0; }
+.calculos p { margin: 4px 0; }
+.sub-tarjeta .fila-equipo h3 { margin: 0; }
 .tajo-cab { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .tajo-cab h3 { margin: 0; }
 .operacion { border-top: 1px solid var(--borde); margin-top: 12px; padding-top: 4px; }
