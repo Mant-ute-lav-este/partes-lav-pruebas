@@ -49,6 +49,8 @@ export const estado = {
   compartidas: null,     // hoja abierta para colocarlas: { destinos, elegido, miniaturas }
   compartirActivo: false, // este móvil ya tiene «Compartir → Partes LAV» (se lee al arrancar, ver app.js)
   origenFoto: null,      // hoja «¿De dónde es la foto?» al tocar Galería: { modo, paso, pendiente }
+  verCasos: false,       // HERBICIDA: la pantalla del parte enseña la lista de casos SIOS
+  buscaSios: '',         // lo escrito en el buscador de esa lista
 };
 export const urls = new Map();   // id de foto → URL para las miniaturas
 
@@ -138,6 +140,9 @@ export async function ir(vista) {
     estado.busqueda = '';
     estado.otroAbierto = false;
   }
+  // HERBICIDA: la ficha de un caso vuelve («‹ Casos») a la lista de casos; al salir del parte se cierra.
+  if (vista === 'trabajo' && estado.parte && estado.parte.tipo === 'HERBICIDA') estado.verCasos = true;
+  if (vista !== 'parte' && vista !== 'trabajo') { estado.verCasos = false; estado.buscaSios = ''; }
   estado.vista = vista;
   estado.errores = [];
   estado.menu = false;

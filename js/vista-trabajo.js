@@ -483,7 +483,8 @@ export function liberarFotos() {
 export async function borrarTrabajo() {
   const p = estado.parte;
   const t = trabajoActual();
-  if (!confirm(`¿Eliminar el trabajo ${estado.trabajoIdx + 1} y sus fotos?`)) return;
+  const que = p.tipo === 'HERBICIDA' ? `el caso ${estado.trabajoIdx + 1} (SIOS ${t.referencia.codigo || '¿?'})` : `el trabajo ${estado.trabajoIdx + 1}`;
+  if (!confirm(`¿Eliminar ${que} y sus fotos?`)) return;
   for (const f of t.fotos) await db.borrarFoto(f.id);
   p.trabajos.splice(estado.trabajoIdx, 1);
   estado.trabajoIdx = null;
