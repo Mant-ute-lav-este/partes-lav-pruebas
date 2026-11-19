@@ -126,7 +126,7 @@ export function textoMedidas(p) {
 // que es la versión del formato del Datos_ (docs/DATOS-PARTE.md).
 
 /** Esquema de los partes de esta versión de la app. 1 = cualquier parte de antes de la 0.27.0. */
-export const ESQUEMA = 3;
+export const ESQUEMA = 4;
 
 /** Pone al día un borrador guardado por una versión anterior (lo cambia y lo devuelve). */
 export function migrarParte(p) {
@@ -136,8 +136,48 @@ export function migrarParte(p) {
   // 2 → 3 (0.30.0): llega el parte HERBICIDA. Los demás tipos no cambian; a un HERBICIDA se le
   // completa lo que falte (hoy no hay ninguno anterior: queda para los que lleguen después).
   if (p.tipo === 'HERBICIDA') completarHerbicida(p);
+  // 3 → 4 (0.31.0): precarga del planificador. Cada trabajo de INFRA y SUPER lleva `plan` (ids del
+  // planificador del portal); los que ya estaban son trabajos hechos a mano: lista vacía.
+  if ((p.tipo === 'INFRA' || p.tipo === 'SUPER') && Array.isArray(p.trabajos)) {
+    for (const t of p.trabajos) if (t && typeof t === 'object' && !('plan' in t)) t.plan = [];
+  }
   p.esquema = ESQUEMA;
   return p;
+}
+
+/**
+ * Trabajo nuevo de INFRA o SUPER, en blanco (la línea se trae del anterior). `plan` lleva los ids del
+ * planificador del portal cuando el trabajo se carga del plan; [] = trabajo hecho a mano (el portal lo
+ * cruza como siempre).
+ */
+export function trabajoNuevo(previo) {
+  return {
+    id: uuid(),
+    referencia: { tipo: '', codigo: '', motivo: '' },
+    tipoCoste: '',   // solo INFRA: '' (ninguno), 'RREE' o 'POI'; trabajos de coste directo que se facturan aparte
+    pidame: '',
+    sinVia: false,
+    telefonema: { numero: '', salida: '' },   // nº del telefonema de entrada y del de salida
+    entradaVia: '',
+    salidaVia: '',
+    horaInicio: '',
+    horaFin: '',
+    linea: previo ? previo.linea : '',
+    via: '',
+    aparato: '',
+    pkInicio: '',
+    pkFin: '',
+    metrosLineales: null,
+    motivoActuacion: '',
+    finalizado: null,
+    noRealizado: false,       // «No realizado» (lluvia, sin corte…): pide el motivo en vez de horas, PK y fotos
+    motivoNoRealizado: '',
+    sinFotos: false,          // «No se han podido hacer fotos»: pide el motivo en vez de las fotos
+    motivoSinFotos: '',
+    descripcion: '',
+    fotos: [],
+    plan: [],                 // ids del planificador del portal (esquema 4)
+  };
 }
 
 function migrar1a2(p) {

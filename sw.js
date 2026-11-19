@@ -6,7 +6,7 @@
 // actualizan como script clásico, y un módulo no se podría cargar así. Por eso el envío
 // en segundo plano repite aquí la lógica de js/salida.js.
 
-const VERSION = 'v0.29.1-p202611121239';
+const VERSION = 'v0.30.1-p202611191433';
 const CACHE = `plpruebas-${VERSION}`;
 const JSPDF = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/4.2.1/jspdf.umd.min.js';
 const ARCHIVOS = [
@@ -28,6 +28,7 @@ const ARCHIVOS = [
   './js/fotos.js',
   './js/modelo.js',
   './js/pdf.js',
+  './js/plan.js',
   './js/salida.js',
   './js/servidor.js',
   './js/util.js',

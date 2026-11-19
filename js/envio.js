@@ -5,7 +5,7 @@
 // golpe. Las fotos van dentro de un .txt en JSON (base64) y Power Automate las vuelve
 // a separar en .jpg. Se usa .txt y no .json porque Android no deja compartir .json.
 
-import { generarPDF, textoReferencia, sinFechaOriginal } from './pdf.js';
+import { generarPDF, textoReferencia, textoPlan, sinFechaOriginal } from './pdf.js';
 import { blobABase64, fmtFecha, fmtNum, isoLocal, slug, FORMATO1 } from './util.js';
 import { calculosHerbicida, codigoSios } from './modelo.js';
 
@@ -121,6 +121,7 @@ export async function prepararEnvio(parte, config, leerFoto, versionApp) {
       : parte.tipo === 'HERBICIDA'
       ? textoHerbicida(parte)
       : `Capataz: ${parte.capataz}. Trabajos: ${parte.trabajos.map((t) => textoReferencia(t) + (t.tipoCoste ? ` [${t.tipoCoste}]` : '') +
+        (textoPlan(t) ? ` [${textoPlan(t).toLowerCase()}]` : '') +
         (t.noRealizado ? ` [NO REALIZADO: ${t.motivoNoRealizado || ''}]` : '')).join('; ')}.`,
     ...(sinFotos.length ? [parte.tipo === 'HERBICIDA'
       ? `AVISO: casos sin fotos: ${sinFotos.map(({ t, i }) => `caso ${i + 1}, SIOS ${(t.referencia && t.referencia.codigo) || '?'} (${t.motivoSinFotos || ''})`).join(', ')}.`

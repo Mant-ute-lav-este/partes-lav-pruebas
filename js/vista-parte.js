@@ -15,7 +15,8 @@ import { cabeceraParte, refParte, radio, vErrores } from './campos.js';
 import { seccionExtras, vPreguntaExtras } from './vista-extras.js';
 import { vParteMaq } from './vista-maquinaria.js';
 import { vParteHer } from './vista-herbicida.js';
-import { vFotoGrande, bloqueSinTrabajos } from './vista-trabajo.js';
+import { vFotoGrande, bloqueSinTrabajos, vHojaPlan } from './vista-trabajo.js';
+import { pendientesDelPlan, esPlanificado, marcaPlan } from './plan.js';
 import { vOrigenFoto } from './vista-origen-foto.js';
 
 // ---------- Parte ----------
@@ -49,8 +50,8 @@ export function vParte() {
     <section class="tarjeta">
       <h2>Jornada</h2>
       <label class="campo"><span>Fecha de la jornada</span><input type="date" data-bind="fecha" value="${esc(p.fecha)}"></label>
-      ${p.tipo === 'INFRA' ? '' : `<label class="check"><input type="checkbox" data-bind="nocturna" ${p.nocturna ? 'checked' : ''}>
-        <span>Jornada nocturna <small>(pon la fecha del día en que empezó)</small></span></label>`}
+      <label class="check"><input type="checkbox" data-bind="nocturna" ${p.nocturna ? 'checked' : ''}>
+        <span>Jornada nocturna <small>(pon la fecha del día en que empezó)</small></span></label>
       <div class="campo"><span>Capataz</span><div class="valor-fijo">${esc(p.capataz)}</div></div>
       ${bloqueSinTrabajos(p)}
     </section>
@@ -82,6 +83,7 @@ export function vParte() {
       <h2>Trabajos <span class="contador">${p.trabajos.length}</span></h2>
       ${p.trabajos.length ? '' : '<p class="nota">Añade cada trabajo de la jornada por separado, con sus fotos.</p>'}
       ${p.trabajos.map(resumenTrabajo).join('')}
+      ${avisoPendientes(p)}
       <button class="btn anadir" data-action="nuevo-trabajo">${p.trabajos.length ? '+ Añadir otro trabajo' : '+ Añadir trabajo'}</button>
     </section>
 
@@ -105,7 +107,15 @@ export function vParte() {
   ${estado.fotoVista ? vFotoGrande() : ''}
   ${estado.origenFoto ? vOrigenFoto() : ''}
   ${estado.errores.length ? vErrores() : ''}
-  ${estado.preguntaExtras ? vPreguntaExtras() : ''}`;
+  ${estado.preguntaExtras ? vPreguntaExtras() : ''}
+  ${estado.hojaPlan ? vHojaPlan() : ''}`;
+}
+
+/** «Tienes N trabajos planificados por añadir»: que no se olvide ninguno (quedaría pendiente en el portal). */
+function avisoPendientes(p) {
+  const n = pendientesDelPlan(estado.plan, p, estado.planUsados).length;
+  if (!n) return '';
+  return `<div class="aviso">${n === 1 ? 'Tienes 1 trabajo planificado por añadir.' : `Tienes ${n} trabajos planificados por añadir.`}</div>`;
 }
 
 /** Medidas antiincendios (INFRA, SUPER y HERBICIDA): casillas de la lista de la oficina y «Otras». */
@@ -146,7 +156,7 @@ export function resumenTrabajo(t, i) {
   return `
   <button class="item item-trabajo ${faltas.length ? 'incompleto' : 'completo'}" data-action="editar-trabajo" data-i="${i}">
     <span class="num">${faltas.length ? i + 1 : '✓'}</span>
-    <span class="item-info"><strong>${esc(textoReferencia(t) || 'Sin referencia todavía')}</strong>
+    <span class="item-info"><strong>${esc(textoReferencia(t) || 'Sin referencia todavía')}</strong>${esPlanificado(t) ? ` <span class="mini">${esc(marcaPlan(t))}</span>` : ''}
       ${ubic ? `<br><small>${esc(ubic)}</small>` : ''}
       <br><small>${fin} · fotos: ${n('antes')} antes, ${n('durante')} durante, ${n('despues')} después${sinFotos}</small>
       <br>${faltas.length

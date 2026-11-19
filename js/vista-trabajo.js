@@ -4,11 +4,14 @@
 import * as db from './db.js';
 import { procesarFoto } from './fotos.js';
 import { registrarFallo } from './fallos.js';
-import { esc, uuid, isoLocal, toast, FORMATO1, MAX_FORMATO1, LADO_FORMATO1, LADO_HERBICIDA, CALIDAD_HERBICIDA } from './util.js';
+import {
+  pendientesDelPlan, cargarDelPlan, detallePlan, esPlanificado, marcaPlan, sobrantesAlQuitar, quitarSobrantes,
+} from './plan.js';
+import { esc, uuid, isoLocal, toast, fmtFecha, normaliza, FORMATO1, MAX_FORMATO1, LADO_FORMATO1, LADO_HERBICIDA, CALIDAD_HERBICIDA } from './util.js';
 import { faltasTrabajo, listaAparatos, unirAparatos, pkDeAparatos } from './validaciones.js';
-import { FASES, LINEAS, MOTIVOS_NO_REALIZADO, MOTIVOS_SIN_FOTOS, MOTIVOS_SIN_TRABAJOS, nuevoCaso } from './modelo.js';
+import { FASES, LINEAS, MOTIVOS_NO_REALIZADO, MOTIVOS_SIN_FOTOS, MOTIVOS_SIN_TRABAJOS, nuevoCaso, trabajoNuevo } from './modelo.js';
 import { vCasoHer } from './vista-herbicida.js';
-import { app, estado, urls, ir, render, guardarYa, guardarPronto, motivosCfg } from './estado.js';
+import { app, estado, urls, ir, render, guardarYa, guardarPronto, motivosCfg, catalogo, equiposCfg } from './estado.js';
 import { cabeceraParte, campo, campoHora, campoPk, radio, casillasVias } from './campos.js';
 import { vOrigenFoto } from './vista-origen-foto.js';
 
@@ -27,34 +30,66 @@ export function nuevoTrabajo() {
     ir('trabajo');
     return;
   }
-  p.trabajos.push({
-    id: uuid(),
-    referencia: { tipo: '', codigo: '', motivo: '' },
-    tipoCoste: '',   // solo INFRA: '' (ninguno), 'RREE' o 'POI'; trabajos de coste directo que se facturan aparte
-    pidame: '',
-    sinVia: false,
-    telefonema: { numero: '', salida: '' },   // nº del telefonema de entrada y del de salida
-    entradaVia: '',
-    salidaVia: '',
-    horaInicio: '',
-    horaFin: '',
-    linea: previo ? previo.linea : '',
-    via: '',
-    aparato: '',
-    pkInicio: '',
-    pkFin: '',
-    metrosLineales: null,
-    motivoActuacion: '',
-    finalizado: null,
-    noRealizado: false,       // «No realizado» (lluvia, sin corte…): pide el motivo en vez de horas, PK y fotos
-    motivoNoRealizado: '',
-    sinFotos: false,          // «No se han podido hacer fotos»: pide el motivo en vez de las fotos
-    motivoSinFotos: '',
-    descripcion: '',
-    fotos: [],
-  });
+  p.trabajos.push(trabajoNuevo(previo));
   estado.trabajoIdx = p.trabajos.length - 1;
+  estado.avisoPlan = [];
   ir('trabajo');
+}
+
+// ---------- Trabajos del plan del portal (js/plan.js) ----------
+
+/**
+ * «+ Añadir trabajo»: si al capataz le quedan trabajos planificados para el día de este parte, sale la
+ * hoja para elegir uno (o empezar en blanco); si no, la ficha en blanco, como siempre.
+ */
+export function pedirTrabajo() {
+  if (pendientesDelPlan(estado.plan, estado.parte, estado.planUsados).length) {
+    estado.preguntaOtro = false;
+    estado.hojaPlan = true;
+    render();
+    return;
+  }
+  nuevoTrabajo();
+}
+
+/** «Añadir y rellenar»: el trabajo del plan elegido en la hoja, ya relleno, y se abre su ficha. */
+export function anadirDelPlan(id) {
+  const p = estado.parte;
+  const t = pendientesDelPlan(estado.plan, p, estado.planUsados).find((x) => String(x.id) === String(id));
+  estado.hojaPlan = false;
+  if (!t) { render(); return; }
+  const avisos = cargarDelPlan(p, t, estado.config, listasPlan());
+  estado.trabajoIdx = p.trabajos.length - 1;
+  estado.avisoPlan = ['Rellenado desde el plan. Revisa y retoca lo que haga falta.', ...avisos];
+  // Las personas de fuera de la lista quedan en «otros», como si se hubieran añadido a mano.
+  const nuevos = p.personal.filter((x) => x.otro && !estado.otros.some((y) => normaliza(y.nombre) === normaliza(x.nombre)));
+  if (nuevos.length) {
+    estado.otros = [...nuevos, ...estado.otros].slice(0, 60);
+    db.kvSet('otros', estado.otros).catch(() => {});
+  }
+  ir('trabajo');
+}
+
+/** Con qué se busca al rellenar desde el plan: el catálogo (lista + «otros») y las máquinas de la lista. */
+const listasPlan = () => ({ trabajadores: catalogo(), maquinas: equiposCfg('maquinas') });
+
+export function vHojaPlan() {
+  const p = estado.parte;
+  const pend = pendientesDelPlan(estado.plan, p, estado.planUsados);
+  // Si ya no queda nada (el plan se actualizó con la hoja abierta), se cierra: si no, la pantalla
+  // quedaría sin poder desplazarse y sin hoja que cerrar (render mira hojaPlan después de pintar).
+  if (!pend.length) { estado.hojaPlan = false; return ''; }
+  return `
+  <div class="capa" data-action="cerrar-hoja-plan"><div class="hoja" data-stop>
+    <h2>${p.trabajos.length ? 'Añadir otro trabajo' : 'Añadir trabajo'}</h2>
+    <p class="nota">Planificado para ti el ${esc(fmtFecha(p.fecha))} · ${pend.length === 1 ? 'queda 1' : `quedan ${pend.length}`}. Elige uno.</p>
+    <div class="opciones-plan">
+      ${pend.map((t, i) => `<label class="check opcion-plan"><input type="radio" name="plan-elegido" value="${esc(String(t.id))}" ${i ? '' : 'checked'}>
+        <span><strong>${esc(t.titulo || `Trabajo ${t.id}`)}</strong><br><small>${esc(detallePlan(t))}</small></span></label>`).join('')}
+    </div>
+    <button class="btn primario grande" data-action="plan-anadir">Añadir y rellenar</button>
+    <button class="btn secundario grande" data-action="plan-blanco">Empezar en blanco (a mano)</button>
+  </div></div>`;
 }
 
 /**
@@ -250,6 +285,8 @@ export function vTrabajo() {
   return `
   ${cabeceraParte('volver-parte', 'Parte', `Trabajo ${i + 1} · ${esc(p.ref)}`)}
   <main class="contenido con-pie">
+    ${esPlanificado(t) ? `<p class="nota"><span class="mini">${esc(marcaPlan(t))}</span> Trabajo del planificador del portal.</p>` : ''}
+    ${(estado.avisoPlan || []).length ? `<div class="aviso">${estado.avisoPlan.map(esc).join('<br>')}</div>` : ''}
     ${previo && sinTocar ? `
     <section class="tarjeta copiar">
       <p>¿Es del mismo corte que el trabajo ${i}?</p>
@@ -342,14 +379,18 @@ export function vTrabajo() {
       <p class="falta">Saldrá en rojo en el PDF y en el correo para que la oficina lo vea.</p>` : ''}`}
     </section>
 
-    <button class="btn peligro-texto" data-action="borrar-trabajo">Eliminar este trabajo</button>
+    ${esPlanificado(t) ? `
+    ${t.noRealizado ? '' : '<button class="btn secundario" data-action="plan-no-hecho">No se hizo…</button>'}
+    <button class="btn peligro-texto" data-action="borrar-trabajo">Lo he añadido por error: quitarlo</button>`
+    : '<button class="btn peligro-texto" data-action="borrar-trabajo">Eliminar este trabajo</button>'}
   </main>
   <footer class="pie"><button class="btn primario grande" data-action="trabajo-listo">Listo</button></footer>
   <input type="file" id="in-camara" accept="image/*" capture="environment" hidden>
   <input type="file" id="in-galeria" accept="image/*" multiple hidden>
   ${estado.fotoVista ? vFotoGrande() : ''}
   ${estado.origenFoto ? vOrigenFoto() : ''}
-  ${estado.preguntaOtro ? vPreguntaOtro(t) : ''}`;
+  ${estado.preguntaOtro ? vPreguntaOtro(t) : ''}
+  ${estado.hojaPlan ? vHojaPlan() : ''}`;
 }
 
 /** Al pulsar «Listo» en el último trabajo: ¿hay otro trabajo en la jornada? */
@@ -484,8 +525,18 @@ export async function borrarTrabajo() {
   const p = estado.parte;
   const t = trabajoActual();
   const que = p.tipo === 'HERBICIDA' ? `el caso ${estado.trabajoIdx + 1} (SIOS ${t.referencia.codigo || '¿?'})` : `el trabajo ${estado.trabajoIdx + 1}`;
-  if (!confirm(`¿Eliminar ${que} y sus fotos?`)) return;
+  // Un trabajo del plan no se quita si no se hizo («No se hizo»): solo si se añadió por error. Se quitan
+  // también las personas y máquinas que trajo y que no necesita otro trabajo del plan del parte.
+  const sobra = esPlanificado(t) ? sobrantesAlQuitar(p, estado.trabajoIdx, estado.plan, estado.config, listasPlan()) : null;
+  const tambien = sobra && [...sobra.personas, ...sobra.maquinas].length
+    ? ` También se quitarán del parte: ${[...sobra.personas, ...sobra.maquinas].join(', ')}.`
+    : sobra && sobra.sinDatos ? ' Revisa después el personal y la maquinaria del parte.' : '';
+  const pregunta = esPlanificado(t)
+    ? `¿Quitar ${que} del parte y sus fotos? Úsalo solo si lo has añadido por error: volverá a la lista de planificados.${tambien} Si no se hizo, cancela y pulsa «No se hizo».`
+    : `¿Eliminar ${que} y sus fotos?`;
+  if (!confirm(pregunta)) return;
   for (const f of t.fotos) await db.borrarFoto(f.id);
+  if (sobra) quitarSobrantes(p, sobra);
   p.trabajos.splice(estado.trabajoIdx, 1);
   estado.trabajoIdx = null;
   ir('parte');

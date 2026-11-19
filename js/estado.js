@@ -6,6 +6,7 @@ import * as db from './db.js';
 import { api } from './servidor.js';
 import { procesarSalida } from './salida.js';
 import { enviarFallos } from './fallos.js';
+import { descargarPlan, idsUsadosEnOtros, CLAVE_PLAN } from './plan.js';
 import { esc, isoLocal, normaliza, debounce, toast } from './util.js';
 import { MAQUINAS_VIA_PROVISIONALES, MEDIDAS_PROVISIONALES, persona, claveContador } from './modelo.js';
 import {
@@ -51,6 +52,11 @@ export const estado = {
   origenFoto: null,      // hoja «¿De dónde es la foto?» al tocar Galería: { modo, paso, pendiente }
   verCasos: false,       // HERBICIDA: la pantalla del parte enseña la lista de casos SIOS
   buscaSios: '',         // lo escrito en el buscador de esa lista
+  plan: null,            // plan del portal guardado en el móvil (kv «planDia», js/plan.js)
+  planUsados: new Set(), // ids del plan ya puestos en otros partes del mismo día (se calcula al abrir el parte)
+  planUsadosDe: '',      // parte, fecha y plan para los que se calculó planUsados
+  hojaPlan: false,       // hoja «Añadir trabajo» con lo planificado que queda
+  avisoPlan: [],         // avisos al rellenar un trabajo desde el plan (salen arriba de su ficha)
 };
 export const urls = new Map();   // id de foto → URL para las miniaturas
 
@@ -83,6 +89,14 @@ export async function sincronizar({ avisar = false, lista = true } = {}) {
   }
   const r = await procesarSalida();
   enviarFallos();
+  // El plan del portal, después de la cola (que un portal lento no retrase un parte) y sin esperarlo:
+  // corta a los 15 s, un solo intento, y si falla no se avisa (el parte se hace a mano).
+  // No se vuelve a pintar la pantalla al llegar (cortaría lo que esté escribiendo): se ve al siguiente pintado.
+  if (listaOk) {
+    descargarPlan(estado.config, estado.perfil)
+      .then(async () => { estado.plan = (await db.kvGet(CLAVE_PLAN)) || null; })
+      .catch(() => {});
+  }
   if (r.enviados) toast(r.enviados === 1 ? 'Parte recibido en la oficina ✓' : `${r.enviados} partes recibidos en la oficina ✓`, 4000);
   refrescarVista();
   return listaOk;
@@ -135,6 +149,22 @@ export async function ir(vista) {
     estado.lista = await db.listarPartes();
     try { estado.nCompartidas = (await leerCompartidas()).length; } catch { estado.nCompartidas = 0; }
   }
+  // Plan del portal: qué ids ya están en otros partes del mismo día (solo si hay plan para ese día). Los
+  // otros partes no cambian mientras se está dentro de este: se calcula al entrar en él (o si cambia la fecha).
+  if ((vista === 'parte' || vista === 'trabajo') && estado.parte) {
+    const p = estado.parte;
+    const clave = `${p.id}|${p.fecha}|${estado.plan ? estado.plan.descargado : ''}`;
+    if (estado.planUsadosDe !== clave) {
+      const dia = estado.plan && estado.plan.dias && estado.plan.dias[p.fecha];
+      estado.planUsados = Array.isArray(dia) && dia.length && (p.tipo === 'INFRA' || p.tipo === 'SUPER')
+        ? idsUsadosEnOtros(await db.listarPartes(), p) : new Set();
+      estado.planUsadosDe = clave;
+    }
+  } else {
+    estado.planUsadosDe = '';
+  }
+  if (vista !== 'trabajo') estado.avisoPlan = [];
+  estado.hojaPlan = false;
   if (estado.compartidas) cerrarCompartidas(false);
   if (vista !== 'parte') {
     estado.busqueda = '';
@@ -169,7 +199,7 @@ export function render() {
     (estado.procesando ? `<div class="capa centro"><div class="hoja pequena"><div class="girando"></div><p>${esc(estado.procesando)}</p></div></div>` : '');
   window.scrollTo(0, y);
   document.body.classList.toggle('sin-scroll',
-    Boolean(estado.menu || estado.eligeMaquina || estado.repetir || estado.compartidas || estado.origenFoto || estado.fotoVista || estado.preguntaOtro || estado.preguntaExtras || estado.errores.length || estado.procesando));
+    Boolean(estado.menu || estado.eligeMaquina || estado.repetir || estado.compartidas || estado.origenFoto || estado.fotoVista || estado.preguntaOtro || estado.preguntaExtras || estado.hojaPlan || estado.errores.length || estado.procesando));
   pintarResultados();
   pintarCasos();
   cargarMiniaturas();

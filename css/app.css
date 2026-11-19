@@ -276,6 +276,11 @@ a.btn { display: flex; align-items: center; justify-content: center; text-decora
 }
 .hoja .aspecto { margin: 6px 0 12px; }
 .hoja .aspecto h3 { margin-bottom: 4px; }
+/* Hoja «Añadir trabajo» con lo planificado (js/plan.js): una opción por trabajo, elegir uno */
+.opciones-plan { margin: 4px 0 12px; }
+.opcion-plan { align-items: flex-start; margin-top: 0; padding: 10px 0; border-top: 1px solid var(--borde); }
+.opcion-plan:first-child { border-top: 0; }
+.opcion-plan input { margin-top: 2px; }
 .hoja.pequena { max-width: 320px; border-radius: 16px; text-align: center; padding: 24px; }
 .girando {
   width: 42px; height: 42px; margin: 0 auto 12px; border-radius: 50%;

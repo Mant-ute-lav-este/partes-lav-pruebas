@@ -15,10 +15,11 @@ import { limpiarFotosAntiguas } from './espacio.js';
 import { anotarArranque, compartirActivo } from './compartidas.js';
 import { entrarConPase } from './vista-compartidas.js';
 import { esc } from './util.js';
+import { CLAVE_PLAN } from './plan.js';
 import { app, estado, sincronizar, refrescarVista, ir, guardarYa } from './estado.js';
 import { onInput, onChange, onSubmit, onClick } from './eventos.js';
 
-export const APP_VERSION = '0.29.1-p202611121239';
+export const APP_VERSION = '0.30.1-p202611191433';
 
 // ---------- Arranque ----------
 
@@ -70,6 +71,7 @@ async function iniciar() {
     estado.config = await db.kvGet('config');
     estado.perfil = await db.kvGet('perfil');
     estado.otros = (await db.kvGet('otros')) || [];
+    estado.plan = (await db.kvGet(CLAVE_PLAN)) || null;   // plan del portal (js/plan.js)
     await db.kvSet('servidorUrl', SERVIDOR_URL);   // el service worker la lee para enviar en segundo plano
   } catch (e) {
     app.innerHTML = `<p class="error">No se puede usar el almacenamiento del móvil: ${esc(e.message)}</p>`;

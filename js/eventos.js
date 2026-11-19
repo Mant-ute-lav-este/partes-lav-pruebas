@@ -25,7 +25,7 @@ import { guardarAspecto } from './aspecto.js';
 import { aplicarExtra, extrasATodos } from './vista-extras.js';
 import { pintarResultados, copiarPersonal, anadirOtro, borrarParte, cerrarParte } from './vista-parte.js';
 import {
-  trabajoActual, nuevoTrabajo, copiarTrabajoAnterior, anadirFotos, borrarFoto, borrarTrabajo,
+  trabajoActual, nuevoTrabajo, pedirTrabajo, anadirDelPlan, copiarTrabajoAnterior, anadirFotos, borrarFoto, borrarTrabajo,
   filasAparato, aplicarAparatos, destinoAparato,
 } from './vista-trabajo.js';
 import { anadirDrp, quitarDrp } from './vista-drp.js';
@@ -54,7 +54,7 @@ export const ACCIONES_BORRADOR = new Set([
   'nuevo-tajo', 'quitar-tajo', 'foto', 'foto-formato', 'anadir-drp', 'quitar-drp', 'borrar-foto',
   'borrar-parte', 'cerrar-parte', 'origen-foto-movil', 'origen-foto-whatsapp',
   'nueva-ocupacion', 'quitar-ocupacion', 'elegir-caso', 'nuevo-producto', 'quitar-producto',
-  'anadir-caso', 'anadir-caso-mano',
+  'anadir-caso', 'anadir-caso-mano', 'plan-anadir', 'plan-blanco', 'plan-no-hecho',
 ]);
 
 const esBorrador = () => Boolean(estado.parte && estado.parte.estado === 'borrador');
@@ -598,7 +598,26 @@ export async function onClick(e) {
     case 'abrir-otro': estado.otroAbierto = true; render(); break;
     case 'cancelar-otro': estado.otroAbierto = false; render(); break;
     case 'anadir-otro': anadirOtro(); break;
-    case 'nuevo-trabajo': nuevoTrabajo(); break;
+    case 'nuevo-trabajo': pedirTrabajo(); break;
+    case 'plan-anadir': {
+      const el = app.querySelector('input[name="plan-elegido"]:checked');
+      anadirDelPlan(el && el.value);
+      break;
+    }
+    case 'plan-blanco': estado.hojaPlan = false; nuevoTrabajo(); break;
+    case 'plan-no-hecho': {
+      // Trabajo del plan que no se hizo: queda como «No realizado» y se pide el motivo (no se quita).
+      const t = trabajoActual();
+      if (!t) break;
+      t.finalizado = false;
+      t.noRealizado = true;
+      guardarPronto();
+      render();
+      const sel = app.querySelector('[data-motivo-lista]');
+      if (sel) sel.scrollIntoView({ block: 'center' });
+      break;
+    }
+    case 'cerrar-hoja-plan': estado.hojaPlan = false; render(); break;
     case 'editar-trabajo':
     case 'ir-trabajo': estado.trabajoIdx = i; ir('trabajo'); break;
     case 'volver-parte': ir('parte'); break;

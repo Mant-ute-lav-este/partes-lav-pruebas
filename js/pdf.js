@@ -3,6 +3,7 @@
 import { fmtFecha, fmtFechaHora, fmtNum, FORMATO1 } from './util.js';
 import { puestosDe, listaAparatos, mismoNombre } from './validaciones.js';
 import { calculosHerbicida, medioCaso, m2Caso, llevaAnexoFotos, NOMBRE_MEDIO } from './modelo.js';
+import { idsPlan } from './plan.js';
 
 const PT = 0.3528;              // 1 punto tipográfico en mm
 const M = 8;                    // margen
@@ -104,6 +105,11 @@ export function textoReferencia(t) {
   // Sin referencia: lo que escribe el capataz es la referencia (antes salía «Sin referencia: …»).
   if (r.tipo === 'SIN_REF') return (r.motivo || '').trim() || 'Sin referencia';
   return '';
+}
+
+/** Ids del planificador del portal del trabajo: «Plan 172» o «Plan 172, 173»; '' si se añadió a mano. */
+export function textoPlan(t) {
+  return idsPlan(t) ? `Plan ${idsPlan(t)}` : '';
 }
 
 /** Foto de galería cuyo archivo no traía la fecha original: se usó la fecha del archivo. */
@@ -306,7 +312,7 @@ export async function generarPDF(parte, config, versionApp = '', leerFoto = null
     { t: '¿FIN?', w: 17, a: 'center' }, { t: 'DESCRIPCIÓN', w: AN - 216 - ANCHO_VIA - (conCoste ? ANCHO_COSTE : 0) },
   ], parte.trabajos.map((t, i) => [
     String(i + 1),
-    textoReferencia(t),
+    [textoReferencia(t), textoPlan(t)].filter(Boolean).join('\n'),   // el plan, debajo (los partes a mano, igual que siempre)
     ...(conCoste ? [t.tipoCoste || '-'] : []),
     t.pidame,
     t.sinVia ? 'No ocupa vía' : [t.telefonema?.numero && `Ent. ${t.telefonema.numero}`, t.telefonema?.salida && `Sal. ${t.telefonema.salida}`, t.telefonema?.hora].filter(Boolean).join('\n'),
